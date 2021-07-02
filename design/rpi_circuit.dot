@@ -1,0 +1,245 @@
+digraph {
+	rankdir=LR;
+
+	// connection types:
+	// [w] - wire
+	// [s] - screw block
+	// [r] - ring
+	// [t] - screw terminal (like for rings)
+	// [f2x3] - female JST, 2 by 3 (6 pins)
+	// [m1x4] - male JST, 1 by 4 (4 pins)
+
+	ac_line1 [color=darkorange4, label="ac_line1 [w]"];
+	ac_line2 [color=darkorange4, style=dashed, label="ac_line2 [w]"];
+	// ac110v_neutral [style=dashed];
+
+	// cleaner_pump_l1 [color=darkorange4];
+	// cleaner_pump_l2 [color=darkorange4];
+	cleaner_pump [shape=plaintext, label=<<table>
+		<tr><td><b>Cleaner Pump</b></td></tr>
+		<tr><td port="line1" bgcolor="darkorange4">line1 [w]</td></tr>	
+		<tr><td port="line2" bgcolor="darkorange4">line2 [w]</td></tr>	
+		<tr><td port="neutral">neutral [w]</td></tr>	
+	</table>>];
+
+	pump [shape=plaintext, label=<<table>
+		<tr><td><b>Pump</b></td></tr>
+		<tr><td port="step_1" bgcolor="limegreen">step_1 [r]</td></tr>	
+		<tr><td port="step_2" bgcolor="indigo">step_2 [r]</td></tr>	
+		<tr><td port="step_3">step_3 [nc]</td></tr>	
+		<tr><td port="stop" bgcolor="orange">stop [r]</td></tr>	
+		<tr><td port="com" bgcolor="brown">com [r]</td></tr>	
+	</table>>];
+
+	acdc [shape=plaintext, label=<<table>
+		<tr><td><b>AC/DC</b></td></tr>
+		<tr><td port="ac_l" bgcolor="blue">24v AC [s]</td></tr>	
+		<tr><td port="ac_n" bgcolor="brown">24v AC [s]</td></tr>
+		<tr><td port="vcc" bgcolor="yellow">vcc [s]</td></tr>
+		<tr><td port="gnd" bgcolor="dimgray">gnd [s]</td></tr>
+	</table>>];
+
+	ac24v_line [shape=Msquare, color=blue, label="AC24v_line [r]"];
+	ac24v_neutral [shape=Msquare, color=brown, label="AC24v_neutral [r]"];
+
+	in_valve [shape=plaintext, label=<<table>
+		<tr><td><b>IN valve</b></td></tr>
+		<tr><td port="pool" bgcolor="red">pool [f1x3]</td></tr>	
+		<tr><td port="spa" bgcolor="aqua">spa [f1x3]</td></tr>
+		<tr><td port="com" bgcolor="brown">com [f1x3]</td></tr>
+	</table>>];
+	in_switch [shape=plaintext, label=<<table>
+		<tr><td><b>IN switch</b></td></tr>
+		<tr><td port="pool" bgcolor="red">pool [t]</td></tr>	
+		<tr><td port="com" bgcolor="orange">com (pump_stop) [t]</td></tr>
+		<tr><td port="spa" bgcolor="aqua">spa [t]</td></tr>
+	</table>>];
+	out_valve [shape=plaintext, label=<<table>
+		<tr><td><b>OUT valve</b></td></tr>
+		<tr><td port="pool" bgcolor="red">pool [f1x3]</td></tr>	
+		<tr><td port="spa" bgcolor="aqua">spa [f1x3]</td></tr>
+		<tr><td port="com" bgcolor="brown">com [f1x3]</td></tr>
+	</table>>];
+	out_switch [shape=plaintext, label=<<table>
+		<tr><td><b>OUT switch</b></td></tr>
+		<tr><td port="pool" bgcolor="red">pool [t]</td></tr>	
+		<tr><td port="com" bgcolor="orange">com (pump_stop) [t]</td></tr>
+		<tr><td port="spa" bgcolor="aqua">spa [t]</td></tr>
+	</table>>];
+
+	stop_switch [shape=plaintext, label=<<table>
+		<tr><td><b>STOP switch</b></td></tr>
+		<tr><td port="com" bgcolor="blue">com [t]</td></tr>
+		<tr><td port="no" bgcolor="orange">NO [t]</td></tr>	
+	</table>>];
+
+	flow_switch [shape=plaintext, label=<<table>
+		<tr><td><b>FLOW switch</b></td></tr>
+		<tr><td port="no" bgcolor="green">NO (flow_sw) [w]</td></tr>	
+		<tr><td port="com" bgcolor="yellow">com [w]</td></tr>
+	</table>>];
+	
+	heater_switch [shape=plaintext, label=<<table>
+		<tr><td><b>HEAT switch</b></td></tr>
+		<tr><td port="pool" bgcolor="darkred">pool [t]</td></tr>	
+		<tr><td port="com" bgcolor="lightgray">com [t]</td></tr>
+		<tr><td port="spa" bgcolor="darkcyan">spa [t]</td></tr>
+	</table>>];
+
+	heater [shape=plaintext, label=<<table>
+		<tr><td><b>Heater</b></td></tr>
+		<tr><td port="pool" bgcolor="darkred">pool [t]</td></tr>	
+		<tr><td port="com" bgcolor="gray">com [t]</td></tr>
+		<tr><td port="spa" bgcolor="darkcyan">spa [t]</td></tr>
+	</table>>];
+
+	rpi [shape=plaintext, label=<<table>
+		<tr><td colspan="2"><b>rpi</b></td></tr>
+		<tr><td port="p5" bgcolor="orange">p5 (pump_stop)</td><td port="gnd0">gnd0</td></tr>
+		<tr><td port="p6" bgcolor="limegreen">p6 (pump_step1)</td>
+			<td port="p12" bgcolor="indigo">p12 (pump_step2)</td></tr>
+		<tr><td port="p13" bgcolor="darkcyan">p13 (heater_spa)</td>
+			<td port="gnd1">gnd1</td></tr>
+		<tr><td port="p19">p19 (in_valve)</td>
+			<td port="p16">p16 (out_valve)</td></tr>
+		<tr><td port="p26" bgcolor="darkorange4">p26 (cleaner_pump)</td>
+			<td port="p20" bgcolor="aquamarine">p20 (valve_current)</td></tr>
+		<tr><td port="gnd2">gnd2</td><td port="p21" bgcolor="green">p21 (flow_sw)</td></tr>
+		</table>>];
+
+	
+	relay0 [shape=plaintext, label=<<table>
+		<tr><td colspan="2"><b>relay0 (pump)</b></td></tr>
+		<tr><td></td><td port="nc_1" bgcolor="lightblue">NC_1 (pump_on) [s]</td></tr>
+		<tr><td></td><td port="com_1" bgcolor="blue">COM_1 (24vac_line) [s]</td></tr>
+		<tr><td></td><td port="no_1" bgcolor="orange">NO_1 (pump_stop) [s]</td></tr>
+		<tr><td></td><td port="nc_2">NC_2 [s]</td></tr>
+		<tr><td></td><td port="com_2" bgcolor="lightblue">COM_2 (pump_on) [s]</td></tr>
+		<tr><td></td><td port="no_2" bgcolor="limegreen">NO_2 (pump_step1) [s]</td></tr>
+		<tr><td port="vcc" bgcolor="yellow">vcc [s]</td>
+			<td port="nc_3">NC_3 [s]</td></tr>
+		<tr><td port="gnd" bgcolor="dimgray">gnd [s]</td>
+			<td port="com_3" bgcolor="lightblue">COM_3 (pump_on) [s]</td></tr>
+		<tr><td port="in_1" bgcolor="orange">IN_1 (pump_stop) [s]</td>
+			<td port="no_3" bgcolor="indigo">NO_3 (pump_step2) [s]</td></tr>
+		<tr><td port="in_2" bgcolor="limegreen">IN_2 (pump_step1) [s]</td>
+			<td port="nc_4" bgcolor="lightgray">NC_4 (heater_com) [s]</td></tr>
+		<tr><td port="in_3" bgcolor="indigo">IN_3 (pump_step2) [s]</td>
+			<td port="com_4" bgcolor="gray">COM_4 (heater_com) [s]</td></tr>
+		<tr><td port="in_4" bgcolor="darkcyan">IN_4 (heater_spa) [s]</td>
+			<td port="no_4" bgcolor="darkcyan">NO_4 (heater_spa) [s]</td></tr>
+		</table>>];
+
+	relay1 [shape=plaintext label=<<table>
+		<tr><td colspan="2"><b>relay1 (valves)</b></td></tr>
+		<tr><td></td><td port="nc_1" bgcolor="red">NC_1 (in_pool) [s]</td></tr>
+		<tr><td port="gnd" bgcolor="dimgray">gnd [m1x4]</td>
+			<td port="com_1" bgcolor="orange">COM_1 (pump_stop) [s]</td></tr>
+		<tr><td port="in_1">IN_1 (in_valve) [m1x4]</td>
+			<td port="no_1" bgcolor="aqua">NO_1 (in_spa) [s]</td></tr>
+		<tr><td port="in_2">IN_2 (out_valve) [m1x4]</td>
+			<td port="nc_2" bgcolor="red">NC_2 (out_pool) [s]</td></tr>
+		<tr><td port="vcc" bgcolor="yellow">vcc [m1x4]</td>
+			<td port="com_2" bgcolor="orange">COM_2 (pump_stop) [s]</td></tr>
+		<tr><td></td><td port="no_2" bgcolor="aqua">NO_2 (out_spa) [s]</td></tr>
+		</table>>];
+	
+	
+	relay2 [shape=plaintext label=<<table>
+		<tr><td colspan="2"><b>relay2 (cleaner pump)</b></td></tr>
+		<tr><td></td><td port="nc_1">NC_1</td></tr>
+		<tr><td port="gnd" bgcolor="dimgray">gnd [m1x4]</td>
+			<td port="com_1">COM_1 [s]</td></tr>
+		<tr><td port="in_1">IN_1 [m1x4]</td>
+			<td port="no_1">NO_1 [s]</td></tr>
+		<tr><td port="in_2">IN_2 [m1x4]</td>
+			<td port="nc_2">NC_2 [s]</td></tr>
+		<tr><td port="vcc" bgcolor="yellow">vcc [m1x4]</td>
+			<td port="com_2">COM_2 [s]</td></tr>
+		<tr><td></td><td port="no_2">NO_2 [s]</td></tr>
+		</table>>];
+
+	valve_cur_sens [shape=plaintext, label=<<table>
+		<tr><td colspan="2"><b>Valve Current</b></td></tr>
+		<tr><td port="gnd" bgcolor="dimgray">gnd [m1x3]</td>
+			<td port="a" bgcolor="orange">a (pump_stop) [s]</td></tr>
+		<tr><td port="out" bgcolor="aquamarine">out (valve_current) [m1x3]</td>
+			<td port="b" bgcolor="orange">b (pump_stop) [s]</td></tr>
+		<tr><td port="vcc" bgcolor="yellow">vcc [m1x3]</td><td></td></tr>
+		</table>>];
+
+	// =========== CONNECTIONS ===========
+	// ac24v_line -> relay0:com_3 [label="", style=dashed, color=blue, penwidth=3];
+	// ac24v_line -> relay0:com_4 [label="", style=dashed, color=blue, penwidth=3];
+	// arduino:a2 -> relay0:in_3 [label="", color=limegreen];
+	// arduino:a3 -> relay0:in_4 [label="", color=indigo];
+	// arduino:d10 -> relay1:in_2 [color=aqua];
+	// arduino:d11 -> relay1:in_3 [color=red];
+	// arduino:d12 -> relay1:in_4 [color=aqua];
+	// arduino:d13 -> relay2:in_1 [color=darkorange4];
+	// arduino:d6 -> relay3:in_1 [color=darkred];
+	// arduino:d7 -> relay3:in_2 [color=darkcyan];
+	// arduino:d8 -> relay0:in_1 [color=orange];
+	// arduino:d9 -> relay1:in_1 [color=red];
+	flow_switch:no -> rpi:p21 [label="", color=green];
+	// heater_switch:com -> relay3:com_1 [label="", style=dashed, color=gray, penwidth=3];
+	// relay0:no_1 -> relay0:com_2 [label="", style=dashed, color=orange, penwidth=3];
+	relay0:no_1 -> valve_cur_sens:a [label="", style=dashed, color=orange, penwidth=3];
+	// relay1:nc_1 -> relay1:com_2 [label="", style=dashed, color=lightgreen, penwidth=3];
+	// relay1:nc_2 -> in_switch:com [label="", style=dashed, color=darkgreen, penwidth=3];
+	// relay1:nc_3 -> relay1:com_4 [label="", style=dashed, color=lawngreen, penwidth=3];
+	// relay1:nc_4 -> out_switch:com [label="", style=dashed, color=darkgreen, penwidth=3];
+	relay1:nc_1 -> in_switch:pool [label="", style=dashed, color=red, penwidth=3];
+	relay1:no_1 -> in_switch:spa [label="", style=dashed, color=aqua, penwidth=3];
+	relay1:nc_2 -> out_switch:pool [label="", style=dashed, color=red, penwidth=3];
+	relay1:no_2 -> out_switch:spa [label="", style=dashed, color=aqua, penwidth=3];
+	// relay3:nc_1 -> relay3:com_2 [label="", style=dashed, color=lightgray, penwidth=3];
+	// relay3:no_1 -> heater_switch:pool [label="", style=dashed, color=darkred, penwidth=3];
+	// relay3:no_2 -> heater_switch:spa [label="", style=dashed, color=darkcyan, penwidth=3];
+	ac24v_line -> acdc:ac_l [label="", style=dashed, color=blue, penwidth=3];
+	ac24v_line -> stop_switch:com [label="", style=dashed, color=blue, penwidth=3];
+	ac_line1 -> relay2:com_1 [label="", style=dashed, color=darkorange4, penwidth=5];
+	ac_line2 -> relay2:com_2 [label="", style=dashed, color=darkorange4, penwidth=5];
+	acdc:ac_n -> ac24v_neutral [label="", style=dashed, color=brown, penwidth=3];
+	acdc:vcc -> flow_switch:com [label="", color=yellow];
+	in_switch:pool -> in_valve:pool [label="", style=dashed, color=red, penwidth=3];
+	in_switch:spa -> in_valve:spa [label="", style=dashed, color=aqua, penwidth=3];
+	in_valve:com -> ac24v_neutral [label="", style=dashed, color=brown, penwidth=3];
+	out_switch:pool -> out_valve:pool [label="", style=dashed, color=red, penwidth=3];
+	out_switch:spa -> out_valve:spa [label="", style=dashed, color=aqua, penwidth=3];
+	out_valve:com -> ac24v_neutral [label="", style=dashed, color=brown, penwidth=3];
+	pump:com -> ac24v_neutral [label="", style=dashed, color=brown, penwidth=3];
+	relay0:no_1 -> stop_switch:no [label="", style=dashed, color=orange, penwidth=3];
+	relay0:no_2 -> pump:step_1 [label="", style=dashed, color=limegreen, penwidth=3];
+	relay0:no_3 -> pump:step_2 [label="", style=dashed, color=indigo, penwidth=3];
+	relay2:in_1 -> relay2:in_2 [label="", color=darkorange4];
+	relay2:no_1 -> cleaner_pump:line1 [label="", color=darkorange4, style=dashed, penwidth=5];
+	relay2:no_2 -> cleaner_pump:line2 [label="", color=darkorange4, style=dashed, penwidth=5];
+	stop_switch:com -> relay0:com_1 [label="", style=dashed, color=blue, penwidth=3];
+	stop_switch:no -> pump:stop [label="", style=dashed, color=orange, penwidth=3];
+	valve_cur_sens:b -> in_switch:com [label="", style=dashed, color=orange, penwidth=3];
+	valve_cur_sens:b -> out_switch:com [label="", style=dashed, color=orange, penwidth=3];
+	in_switch:com -> relay1:com_1 [label="", style=dashed, color=orange, penwidth=3];
+	out_switch:com -> relay1:com_2 [label="", style=dashed, color=orange, penwidth=3];
+	valve_cur_sens:out -> rpi:p20 [label="", color=aquamarine];
+
+
+
+	relay0:nc_1 -> relay0:com_2 [color=lightblue, style=dashed, penwidth=3];
+	relay0:nc_1 -> relay0:com_3 [color=lightblue, style=dashed, penwidth=3];
+	rpi:p5 -> relay0:in_1 [color=orange];
+	rpi:p6 -> relay0:in_2 [color=limegreen];
+	rpi:p12 -> relay0:in_3 [color=indigo];
+
+	rpi:p19 -> relay1:in_1;
+	rpi:p16 -> relay1:in_2;
+
+	rpi:p26 -> relay2:in_1 [color=darkorange4];
+	rpi:p13 -> relay0:in_4 [color=darkcyan];
+	relay0:no_4 -> heater_switch:spa [color=darkcyan, style=dashed, penwidth=3];
+	heater_switch:pool -> heater:pool [color=darkred, style=dashed, penwidth=3];
+	heater_switch:spa -> heater:spa [color=darkcyan, style=dashed, penwidth=3];
+	heater:com -> relay0:com_4 [color=gray, style=dashed, penwidth=3];
+	relay0:nc_4 -> heater_switch:com [color=lightgray, style=dashed, penwidth=3];
+
+}

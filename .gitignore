@@ -1,3 +1,5 @@
 *.gcode
 *.stl
 *.svg
+python/database.db
+*.pyc
