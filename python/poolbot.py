@@ -71,7 +71,7 @@ class RecurringEvent(dict):
         if self['skip_days'] == 0:
             return False
         days_since_previous_event = query_db(
-            "select julianday('now') - julianday('start_date') "
+            "select julianday('now', 'localtime') - julianday('start_date') "
             "from events where recurring_source_id = ? "
             "order by start_date desc limit 1", one=True)
         if days_since_previous_event is None:
@@ -119,22 +119,22 @@ DEFAULT_RECURRING_EVENTS = [
     ),
     RecurringEvent(
         start_time="22:00",
-        end_time="23:59",
+        end_time="04:00",
         in_valve=POOL,
         out_valve=SPA,
         speed=MIN,
         cleaner=False,
         heater=False,
     ),
-    RecurringEvent(
-        start_time="00:00",
-        end_time="04:00",
-        in_valve=POOL,
-        out_valve=POOL,
-        speed=MIN,
-        cleaner=False,
-        heater=False,
-    ),
+    # RecurringEvent(
+    #     start_time="00:00",
+    #     end_time="04:00",
+    #     in_valve=POOL,
+    #     out_valve=POOL,
+    #     speed=MIN,
+    #     cleaner=False,
+    #     heater=False,
+    # ),
 ]
 
 def get_db():
@@ -149,15 +149,15 @@ def make_dicts(cursor, row):
                 for idx, value in enumerate(row))
 
 def query_db(query, args=(), one=False):
-    app.logger.debug("query={}, args={}, one={}".format(query, args, one))
+    # app.logger.debug("query={}, args={}, one={}".format(query, args, one))
     with app.app_context():
         cur = get_db().execute(query, args)
         rv = cur.fetchall()
         cur.close()
     return (rv[0] if rv else None) if one else rv
 
-def write_db(query, args=(), one=False):
-    app.logger.debug("query={}, args={}, one={}".format(query, args, one))
+def write_db(query, args=()):
+    app.logger.debug("query={}, args={}".format(query, args))
     with app.app_context():
         db = get_db()
         db.execute(query, args)
@@ -211,16 +211,14 @@ def reset():
 @app.route("/v0/tick", methods=['POST'])
 def tick():
     """Main loop, externally triggered every minute"""
-    active_event = get_current_event()
-    # response = dict(
-    #     active=active_event,
-    #     next=next_event)
-    return jsonify(active_event)
+    current_event = get_current_event()
+    if current_event and not current_event["activated"]:
+        current_event = activate_event(current_event)
+    return jsonify(current_event)
 
 
 @app.route("/v0/events/current")
 def current_event():
-    app.logger.info("checking for current events...")
     event = get_current_event()
     return jsonify(event)
 
@@ -229,17 +227,69 @@ def recurring_events():
     r_events = query_db("select * from recurring_events")
     return jsonify(r_events)
 
-# @app.route("/v0/events/next")
-# def active_events():
-#     event = get_next_event()
-#     return jsonify(event)
+def activate_event(event):
+    app.logger.warning("Activating event {}".format(event))
+    _validate_event(event)
+
+    _stop_pump()
+    _set_valves(in_valve=event['in_valve'], out_valve=event['out_valve'])
+    _set_speed(event['speed'])
+    _set_heater(event['heater'])
+    _set_cleaner(event['cleaner'])
+    _unstop()
+
+    write_db(
+        "update events set activated = ? where id = ?", 
+        args=(True, event['id']))
+    event['activated'] = True
+    return event
+
+def _validate_event(event):
+    """Ensure that event doesn't violate safety checks.
+    * cleaner requires POOL+POOL, no heater    
+    * heater requires SPA+SPA, no cleaner
+    """
+    if event['heater']:
+        if event['in_valve'] != SPA or event['out_valve'] != SPA
+            raise ValueError("heater requires in=SPA, out=SPA")
+        if event['speed'] < HIGH:
+            raise ValueError("heater requires pump speed = HIGH or MAX")
+    if event['cleaner']:
+        if event['in_valve'] != POOL or event['out_valve'] != POOL
+            raise ValueError("cleaner requires in=POOL, out=POOL")
+        if event['speed'] < HIGH:
+            raise ValueError("cleaner requires pump speed = HIGH or MAX")
+
+def _stop_pump():
+    _set_cleaner(False)
+    # TODO: write to pump stop pin
+    pass
+
+def _set_valves(in_valve=POOL, out_valve=POOL):
+    # TODO: write to in_valve pin
+    # TODO: write to out_valve pin
+    _stop_pump()
+    # TODO: poll valve current sensor pin
+    pass
+
+def _set_speed(speed=MIN):
+    pass
+
+def _set_heater(enabled=False):
+    pass
+
+def _set_cleaner(enabled=False):
+    pass
+
+def _unstop():
+    pass
 
 def get_current_event(check_recurring=True):
     event = query_db(
-        "select * from events "
-        "where datetime(start_date) <= datetime('now') "
-        "and datetime(end_date) >= datetime('now') "
-        "order by datetime(start_date) limit 1", 
+        """select * from events 
+        where datetime(start_date) <= datetime('now', 'localtime') 
+        and datetime(end_date) >= datetime('now', 'localtime') 
+        order by datetime(start_date) limit 1""", 
         one=True)
     if not event:
         app.logger.info("Found no current event, checking for recurring events")
@@ -250,10 +300,14 @@ def get_current_event(check_recurring=True):
 
 def get_current_recurring_event():
     r_events = query_db(
-        "select * from recurring_events "
-        # "where time(start_time) <= time('now') "
-        # "and time(end_time) >= time('now') "
-        "order by time(start_time)")
+        """select * from recurring_events 
+        where (time(start_time) <= time(end_time)
+            and time(start_time) <= time('now', 'localtime') 
+            and time(end_time) >= time('now', 'localtime'))
+        or (time(start_time) > time(end_time) and (
+            time(start_time) <= time('now', 'localtime') 
+            or time(end_time) >= time('now', 'localtime')))
+        order by time(start_time)""")
     for r_event in r_events:
         app.logger.info("Checking skip_days for {}".format(r_event))
         r_event = RecurringEvent(**r_event)
@@ -263,15 +317,23 @@ def get_current_recurring_event():
     return None
 
 def create_event_from_recurring(r_event):
+    # TODO: this is crappy
+    end_modifier = "+0 day"
+    if (datetime.strptime(r_event["start_time"], "%H:%M:%S") > 
+            datetime.strptime(r_event["end_time"], "%H:%M:%S")):
+        end_modifier = "+1 day"
     write_db(
-        "insert into events "
-        "(start_date, end_date, in_valve, out_valve, "
-        "speed, heater, cleaner, recurring_source_id) "
-        "values ("
-        "date('now') + time(?), date('now') + time(?), "
-        "?, ?, ?, ?, ?, ?)", args=(
+        """insert into events 
+        (start_date, end_date, in_valve, out_valve, 
+        speed, heater, cleaner, recurring_source_id) 
+        values (
+            datetime(date('now', 'localtime'), + ?), 
+            datetime(date('now', 'localtime'), + ?, ?), 
+            ?, ?, ?, ?, ?, ?)""", 
+        args=(
             r_event['start_time'],
             r_event['end_time'],
+            end_modifier,
             r_event['in_valve'],
             r_event['out_valve'],
             r_event['speed'],
@@ -279,9 +341,9 @@ def create_event_from_recurring(r_event):
             r_event['cleaner'],
             r_event['id']))
     event = query_db(
-        "select * from events "
-        "where recurring_source_id = ? "
-        "order by datetime(start_date) desc limit 1", 
+        """select * from events 
+        where recurring_source_id = ? 
+        order by datetime(start_date) desc limit 1""", 
         args=(r_event['id'],), one=True)
     event = Event(**event)
     return event
