@@ -2,6 +2,7 @@ import sqlite3
 from flask import g, Flask, jsonify
 from datetime import datetime
 import logging
+from gpiozero import OutputDevice, DigitalInputDevice
 
 DATABASE = 'database.db'
 POOL = 0
@@ -23,6 +24,15 @@ PIN_FLOW_SWITCH = 21
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
+
+pump_stop = OutputDevice(PIN_STOP, initial_value=None)
+pump_step1 = OutputDevice(PIN_STEP1, initial_value=None)
+pump_step2 = OutputDevice(PIN_STEP2, initial_value=None)
+heater = OutputDevice(PIN_HEATER, initial_value=None)
+in_valve_spa = OutputDevice(PIN_IN_VALVE, initial_value=None)
+out_valve_spa = OutputDevice(PIN_OUT_VALVE, initial_value=None)
+cleaner = OutputDevice(PIN_CLEANER, initial_value=None)
+flow_switch = DigitalInputDevice(PIN_FLOW_SWITCH, pull_up=True)
 
 # Events use datetimes, but RecurringEvents only have times.
 # A "current" Event is one whose start/end encompass now.
