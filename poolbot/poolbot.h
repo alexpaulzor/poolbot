@@ -2,6 +2,10 @@
 
 #ifndef POOLBOT_H
 #define POOLBOT_H
+#include <DS3231.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <EEPROM.h>
 
 #define IFACE_MS 100
 #define DEFAULT_DURATION_M 60l
@@ -74,6 +78,49 @@ typedef struct {
 #define SCHED_ITEM_BYTES 4
 //#define EEPROM_SIZE (2 * 1024)  // 2 kB
 #define SCHED_SLOTS 10
+
+/* MENUS */
+void menu_edit_schedule();
+void menu_edit_schedule_item(byte sched_row);
+void menu_edit_schedule_item_show(byte sched_row, byte row_index);
+void menu_edit_schedule_show(byte row_index);
+short menu_edit_schedule_item_handle_button(byte sched_row, byte button_pin);
+void menu_root();
+void menu_root_show(byte row_index);
+void menu_set_time();
+void handle_input();
+byte wait_button_release();
+char * get_mode_str(t_mode md);
+char * get_speed_str(t_speed spd);
+byte poll_buttons();
+void update_display();
+void schedule_row_to_buf(char *buf, t_schedule_item item);
+
+/* SCHEDULE */
+void reset_to_defaults();
+void sort_schedule();
+void save_schedule();
+void set_schedule_item(t_schedule_item &item, unsigned short start_time_m, t_mode md, t_speed spd, byte duration_m);
+void load_schedule();
+void complete_schedule_item();
+byte mode_to_nibble(t_mode md);
+byte speed_to_nibble(t_speed spd);
+t_mode nibble_to_mode(byte nib);
+t_speed nibble_to_speed(byte nib);
+byte get_next_schedule_item_idx();
+unsigned short get_now_m();
+
+/* HARDWARE */
+void set_mode(t_mode md);
+void set_speed(t_speed spd);
+void complete_mode_transition();
+void stop_cleaner();
+void stop_heater();
+void stop_pumps();
+void unstop_pump();
+bool needs_valve_transition(t_mode from_mode, t_mode to_mode);
+bool start_cleaner();
+bool start_heater();
 
 # endif // POOLBOT_H
 
