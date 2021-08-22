@@ -1,15 +1,19 @@
-#include <DS3231.h>
+//#include <DS3231.h>
 #include <Wire.h>
-#include "LCD03.h"
+//#include "LCD03.h"
 #include "poolbot.h"
-
-LCD03 lcd;
-DS3231 clock;
+#include <LiquidCrystal_I2C.h>
+// Set the LCD address to 0x27 for a 20 chars and 4 line display
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+//LCD03 lcd;
+//DS3231 clock;
 
 t_mode mode = MODE_UNKNOWN;
 t_port in_port = PORT_UNKNOWN;
 t_port out_port = PORT_UNKNOWN;
 t_speed speed = SPEED_OFF;
+
+unsigned long valves_moving_until = 0;
 
 void stop_pump() {
 	digitalWrite(PIN_PUMP_STOP, HIGH);
@@ -34,6 +38,7 @@ void stop_cleaner() {
 }
 
 void setup() {
+	Serial.begin(9600);
 	//pinMode(PIN_FLOW_SWITCH, INPUT);
 	//pinMode(PIN_VALVE_CURRENT, INPUT);
 	
@@ -64,24 +69,100 @@ void setup() {
 	stop_pump();
 
 	// Set to 24h time
-	clock.setClockMode(false);
+	//clock.setClockMode(false);
 
-	lcd.begin(20, 4);
-	//lcd.backlight();
+	//lcd.begin(20, 4);
+	lcd.init();
+	lcd.noBacklight();
+	lcd.clear();
+	delay(IFACE_MS);
 	update_display();
+	lcd.backlight();
+	Serial.println("setup() complete");
+}
+
+void menu_root_show(byte row_index) {
+	lcd.clear();
+	lcd.setCursor(1, 0);
+	lcd.print("return");
+	lcd.setCursor(1, 1);
+	lcd.print("set time");
+
+	lcd.setCursor(0, row_index);
+	lcd.print(">");
+	// TODO: render schedule rows
+}
+
+void menu_root() {
+	byte row_index = 0;
+	byte num_rows = 4;
+	Serial.println("root menu");
+	menu_root_show(row_index);
+	byte button_pin = poll_buttons();
+	byte last_button_pin = button_pin;
+
+	// wait for no buttons to be pressed
+	while (button_pin != 0) {
+		delay(IFACE_MS);
+		button_pin = poll_buttons();
+	}
+	
+	while (button_pin != PIN_BUTTON_MENU_OK) {
+		if (button_pin == PIN_BUTTON_MENU_DOWN && row_index > 0)
+			row_index--;
+		if (button_pin == PIN_BUTTON_MENU_UP && row_index < num_rows - 1)
+			row_index++;
+		menu_root_show(row_index);
+		last_button_pin = button_pin;
+		do {
+			delay(IFACE_MS);
+			button_pin = poll_buttons();
+		} while (button_pin == last_button_pin);
+	}
+	// wait for no buttons to be pressed
+	while (button_pin != 0) {
+		delay(IFACE_MS);
+		button_pin = poll_buttons();
+	}
+	if (row_index == 0) 
+		// return menu option
+		return;
+	if (row_index == 1)
+		// TODO: set time
+		;
+}
+
+byte poll_buttons() {
+	for (byte i = 0; i < NUM_BUTTONS; i++) {
+		if (digitalRead(INPUT_BUTTON_PINS[i]) == LOW)
+			return INPUT_BUTTON_PINS[i];
+	}
+	return 0;
+}
+
+void handle_input() {
+	byte pressed_button_pin = poll_buttons();
+	switch (pressed_button_pin) {
+		case PIN_BUTTON_MENU_OK:
+			menu_root();
+			break;
+		default:
+			break;
+	}
+	
 }
 
 void loop() {
-	// lcd.print("Hello, world!");
 	// delay(1000);
-	// Serial.println("loop begin");
-	// handle_input();
+	Serial.println("loop begin");
+	handle_input();
 
 	update_display();
-	// lcd.print("Hello, world!");
+	delay(IFACE_MS);
+	//lcd.print("Hello, world!");
 	// lcd.display();
 	// delay(100);
-	// Serial.println("loop complete");
+	Serial.println("loop complete");
 }
 
 char * get_mode(t_mode md) {
@@ -89,7 +170,7 @@ char * get_mode(t_mode md) {
 	if (md == MODE_SPILL) return "SPILL\0";
 	if (md == MODE_POOL)  return "POOL \0";
 	if (md == MODE_CLEAN) return "CLEAN\0";
-	return "?????\0";
+	return "MODE?\0";
 }
 
 char * get_speed(t_speed spd) {
@@ -98,13 +179,14 @@ char * get_speed(t_speed spd) {
 	if (spd == SPEED_LOW) return "LOW\0";
 	if (spd == SPEED_HI)  return "HI \0";
 	if (spd == SPEED_MAX) return "MAX\0";
-	return "???\0";
+	return "SP?\0";
 }
 
 void update_display() {
-	lcd.home();
-	lcd.cursor();
+	lcd.clear();
+	//lcd.cursor();
 
+/*
 	// show current time
 	lcd.setCursor(12, 0);
 	bool am_pm_enabled;
@@ -115,9 +197,9 @@ void update_display() {
 	lcd.print(clock.getMinute());
 	lcd.print(":");
 	lcd.print(clock.getSecond());
-
-	lcd.setCursor(0, 1);
-	lcd.print(">");
+*/
+	lcd.setCursor(1, 1);
+	//lcd.print(">");
 	lcd.print(get_mode(mode));
 	lcd.print(" ");
 	lcd.print(get_speed(speed));
