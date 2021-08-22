@@ -71,6 +71,9 @@ typedef struct {
     byte duration_5m;
 } t_schedule_item;
 
+#define SCHED_ITEM_BYTES 4
+//#define EEPROM_SIZE (2 * 1024)  // 2 kB
+#define SCHED_SLOTS 10
 
 # endif // POOLBOT_H
 
