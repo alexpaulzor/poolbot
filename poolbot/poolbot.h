@@ -3,12 +3,14 @@
 #ifndef POOLBOT_H
 #define POOLBOT_H
 
-#define IFACE_MS 150
+#define IFACE_MS 100
+#define DEFAULT_DURATION_M 60l
 
 #define PIN_CLEANER_PUMP 0  // TODO
 
 #define PIN_HEAT 0 // TODO
 
+#define VALVE_MOVE_TIME_MS 35000
 #define PIN_VALVE_IN_SPA 0  // TODO
 #define PIN_VALVE_OUT_SPA 0  // TODO
 // #define PIN_FLOW_SWITCH 0  // TODO
@@ -42,11 +44,6 @@ const byte INPUT_BUTTON_PINS[] = {PIN_BUTTON_MENU_UP, PIN_BUTTON_MENU_OK, PIN_BU
 // #define CURRENT_ZERO ((CURRENT_MAX+CURRENT_MIN)/2)
 
 typedef enum {
-	IN,
-	OUT
-} t_valve;
-
-typedef enum {
 	PORT_POOL,
 	PORT_SPA,
 	PORT_UNKNOWN
@@ -67,6 +64,12 @@ typedef enum {
     SPEED_HI,
     SPEED_MAX
 } t_speed;
+
+typedef struct {
+    unsigned short start_time_m;
+    byte mode_speed;
+    byte duration_5m;
+} t_schedule_item;
 
 
 # endif // POOLBOT_H
