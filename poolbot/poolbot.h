@@ -14,7 +14,7 @@
 
 #define PIN_HEAT 0 // TODO
 
-#define VALVE_MOVE_TIME_MS 35000
+#define VALVE_MOVE_TIME_MS 5000  // TODO: actual time = 35000
 #define PIN_VALVE_IN_SPA 0  // TODO
 #define PIN_VALVE_OUT_SPA 0  // TODO
 // #define PIN_FLOW_SWITCH 0  // TODO
@@ -107,7 +107,7 @@ byte mode_to_nibble(t_mode md);
 byte speed_to_nibble(t_speed spd);
 t_mode nibble_to_mode(byte nib);
 t_speed nibble_to_speed(byte nib);
-byte get_next_schedule_item_idx();
+byte get_next_schedule_item_idx(byte current_idx, unsigned short now_m);
 unsigned short get_now_m();
 
 /* HARDWARE */

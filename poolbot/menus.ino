@@ -53,6 +53,7 @@ void menu_set_time() {
 	clock.setHour(hour);
 	clock.setMinute(minute);
 	millis_offset_now = (hour * 60l + minute) * 60l * 1000l - millis();
+	schedule_until = millis();
 }
 
 void schedule_row_to_buf(char *buf, t_schedule_item item) {
@@ -313,8 +314,9 @@ void handle_input() {
 	byte pressed_button_pin = poll_buttons();
 	switch (pressed_button_pin) {
 		case PIN_BUTTON_MENU_DOWN:
-			schedule_until = schedule_until - (15l*60l*1000l);
-			if (schedule_until < millis())
+			if (schedule_until - (15l*60l*1000l) > millis())
+				schedule_until = schedule_until - (15l*60l*1000l);
+			else
 				schedule_until = millis();
 			Serial.println("Decreased schedule_until to " + String(schedule_until));
 			break;
@@ -411,26 +413,31 @@ void update_display() {
 	lcd.print(" ");
 	lcd.print(get_speed_str(speed));
 
-	if (schedule_until != 0) {
-		lcd.print(" ");
-		int time_left = (schedule_until - millis()) / 1000l;
-		sprintf(
-			buf, "%02d:%02d %3d\0", 
-			time_left / 60 / 60,
-			time_left / 60 % 60,
-			time_left / 60);
-		lcd.print(buf);
-	}
-	// TODO: show next schedule item
-	byte next_schedule_item_idx = get_next_schedule_item_idx();
+	lcd.print(" ");
+	int time_left = (schedule_until - millis()) / 1000l;
+	int time_in_mode = (millis() - last_mode_change) / 1000l;
+	sprintf(
+		buf, "%02d:%02d %3d\0", 
+		time_left / 60 / 60,
+		time_left / 60 % 60,
+		time_in_mode / 60);
+	lcd.print(buf);
+	int next_after_m = get_now_m() + time_left / 60;
+	byte next_schedule_item_idx = get_next_schedule_item_idx(current_schedule_item_idx, next_after_m);
 
 	schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
 	lcd.setCursor(1, 2);
 	lcd.print(buf);
 
+	lcd.setCursor(0, 3);
 	if (valves_moving_until != 0) {
 		long valve_time_left = (valves_moving_until - millis()) / 1000l;
-		lcd.setCursor(0, 3);
 		lcd.print("Moving (" + String(valve_time_left) + "s)...");
+	} else {
+		next_after_m = schedule[next_schedule_item_idx].start_time_m + schedule[next_schedule_item_idx].duration_5m * 5;
+		next_schedule_item_idx = get_next_schedule_item_idx(next_schedule_item_idx, next_after_m);
+		schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+		lcd.setCursor(1, 3);
+		lcd.print(buf);
 	}
 }

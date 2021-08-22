@@ -53,6 +53,7 @@ void stop_pumps() {
 	stop_heater();
 	Serial.println("stop_pumps");
 	digitalWrite(PIN_PUMP_STOP, HIGH);
+	last_mode_change = millis();
 }
 
 void unstop_pump() {
@@ -61,6 +62,7 @@ void unstop_pump() {
 		digitalWrite(PIN_PUMP_STOP, LOW);
 	else
 		Serial.println("(speed=OFF)");
+	last_mode_change = millis();
 }
 
 bool needs_valve_transition(t_mode from_mode, t_mode to_mode) {
@@ -106,20 +108,29 @@ void set_mode(t_mode md) {
 			Serial.println("OUT=POOL");
 			digitalWrite(PIN_VALVE_OUT_SPA, LOW);
 		}
+		last_mode_change = millis();
 	}
 
-	if (md == MODE_SPA)
+	unsigned long safe_time = millis() + (1000l * 60l * DEFAULT_DURATION_M * 4);
+
+	if (md == MODE_SPA) {
 		set_speed(SPEED_MAX);
+		if (schedule_until > safe_time)
+			schedule_until = safe_time;
+	}
 	if (md == MODE_SPILL)
 		set_speed(SPEED_MIN);
 	//if (md == MODE_POOL)
 	//	set_speed(SPEED_LOW);
-	if (md == MODE_CLEAN)
+	if (md == MODE_CLEAN) {
 		set_speed(SPEED_HI);
-	
-	if (schedule_until == 0) {
-		schedule_until = millis() + (1000l * 60l * DEFAULT_DURATION_M);
+		if (schedule_until > safe_time)
+			schedule_until = safe_time;
 	}
+	
+	/*if (schedule_until <= millis()) {
+		schedule_until = millis() + (1000l * 60l * DEFAULT_DURATION_M);
+	}*/
 	mode = md;
 }
 

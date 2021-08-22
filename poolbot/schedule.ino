@@ -42,7 +42,7 @@ void set_schedule_item(t_schedule_item &item, unsigned short start_time_m, t_mod
 
 void reset_to_defaults() {
 	// Rewrite non-volatile memory with default schedule
-	set_schedule_item(schedule[0],  9*60, MODE_SPA,   SPEED_LOW, 15);
+	set_schedule_item(schedule[0],  9*60, MODE_SPILL, SPEED_LOW, 15);
 	set_schedule_item(schedule[1], 10*60, MODE_CLEAN, SPEED_HI,  60);
 	set_schedule_item(schedule[2], 11*60, MODE_POOL,  SPEED_HI,  4*60);
 	set_schedule_item(schedule[3], 18*60, MODE_SPILL, SPEED_MIN, 120);
@@ -105,7 +105,8 @@ void load_schedule() {
 void complete_schedule_item() {
 	if (schedule_until > millis())
 		return;
-	byte next_item_idx = get_next_schedule_item_idx();
+	byte next_item_idx = get_next_schedule_item_idx(
+		current_schedule_item_idx, get_now_m());
 	t_schedule_item next_item = schedule[next_item_idx];
 	
 	if (next_item.duration_5m == 0) {
@@ -123,8 +124,8 @@ void complete_schedule_item() {
 		set_speed(SPEED_OFF);
 		int time_until_m = next_item.start_time_m - get_now_m();
 		if (time_until_m < 0)
-			time_until_m += 24 * 60;
-		schedule_until = millis() + time_until_m * 60l * 1000l;
+			time_until_m = abs(time_until_m + 24 * 60);
+		schedule_until = millis() + (time_until_m * 60l * 1000l);
 	}
 	
 	lcd.clear();
@@ -141,26 +142,25 @@ unsigned short get_now_m() {
 	return ((millis_offset_now + millis()) / 1000l / 60) % (60*24);
 }
 
-byte get_next_schedule_item_idx() {
+byte get_next_schedule_item_idx(byte current_idx, unsigned short now_m) {
 	// Returns current or next-upcoming shedule item
-	unsigned short now = get_now_m();
 	unsigned short next_start_time_m = 24 * 60;
-	byte next_item_idx = current_schedule_item_idx;
+	byte next_item_idx = current_idx;
 	for (int i = 0; i < SCHED_SLOTS; i++) {
-		byte idx = (current_schedule_item_idx + i) % SCHED_SLOTS;
-		if (schedule[idx].duration_5m > 0 &&
-				idx != current_schedule_item_idx && 
-				schedule[idx].start_time_m <= now && 
-				schedule[idx].start_time_m + schedule[idx].duration_5m * 5 >= now) {
+		// byte idx = (current_idx + i) % SCHED_SLOTS;
+		if (schedule[i].duration_5m > 0 &&
+				i != current_idx && 
+				schedule[i].start_time_m <= now_m && 
+				schedule[i].start_time_m + schedule[i].duration_5m * 5 >= now_m) {
 			// current item
 			return i;
 		}
-		if (schedule[idx].duration_5m > 0 &&
-				idx != current_schedule_item_idx &&
-				schedule[idx].start_time_m >= now && 
-				schedule[idx].start_time_m < next_start_time_m) {
-			next_item_idx = idx;
-			next_start_time_m = schedule[idx].start_time_m;
+		if (schedule[i].duration_5m > 0 &&
+				i != current_idx &&
+				schedule[i].start_time_m >= now_m && 
+				schedule[i].start_time_m < next_start_time_m) {
+			next_item_idx = i;
+			next_start_time_m = schedule[i].start_time_m;
 		}
 		// TODO: handle wraparound midnight better
 	}
