@@ -10,18 +10,18 @@
 #define IFACE_MS 100
 #define DEFAULT_DURATION_M 60l
 
-#define PIN_CLEANER_PUMP 0  // TODO
+#define VALVE_MOVE_TIME_MS 10000  // TODO: actual time = 35000
 
-#define PIN_HEAT 0 // TODO
 
-#define VALVE_MOVE_TIME_MS 5000  // TODO: actual time = 35000
-#define PIN_VALVE_IN_SPA 0  // TODO
-#define PIN_VALVE_OUT_SPA 0  // TODO
 // #define PIN_FLOW_SWITCH 0  // TODO
 // #define PIN_VALVE_CURRENT 0  // TODO
-#define PIN_PUMP_STOP 0 // TODO
-#define PIN_PUMP_SPEED_STEP_1 0 // TODO
-#define PIN_PUMP_SPEED_STEP_2 0 // TODO
+#define PIN_PUMP_STOP 2 // RELAY4IN1
+#define PIN_PUMP_SPEED_STEP_1 3 // RELAY4IN2
+#define PIN_PUMP_SPEED_STEP_2 4 // RELAY4IN3
+#define PIN_HEAT 5 // RELAY4IN4
+#define PIN_VALVE_IN_SPA 6  // RELAY0IN1
+#define PIN_VALVE_OUT_SPA 7  // RELAY0IN2
+#define PIN_CLEANER_PUMP 8  // RELAY2IN
 
 #define PIN_BUTTON_MENU_UP 13
 #define PIN_BUTTON_MENU_OK 12
@@ -107,7 +107,7 @@ byte mode_to_nibble(t_mode md);
 byte speed_to_nibble(t_speed spd);
 t_mode nibble_to_mode(byte nib);
 t_speed nibble_to_speed(byte nib);
-byte get_next_schedule_item_idx(byte current_idx, unsigned short now_m);
+int get_next_schedule_item_idx(byte current_idx, unsigned short now_m);
 unsigned short get_now_m();
 
 /* HARDWARE */
@@ -121,6 +121,8 @@ void unstop_pump();
 bool needs_valve_transition(t_mode from_mode, t_mode to_mode);
 bool start_cleaner();
 bool start_heater();
+
+// TODO: helper function to handle millis() rollover
 
 # endif // POOLBOT_H
 

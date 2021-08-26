@@ -7,8 +7,13 @@ void menu_set_time() {
 
 	char buf[21];
 	// TODO: remove
-	short hour = get_now_m() / 60;
-	short minute = get_now_m() % 60;
+	//short hour = get_now_m() / 60;
+	//short minute = get_now_m() % 60;
+
+	bool am_pm_enabled;
+	bool pm_time;
+	int hour = clock.getHour(am_pm_enabled, pm_time);
+	int minute = clock.getMinute();
 
 	lcd.setCursor(0, 1);
 	sprintf(buf, "%02d:%02d", hour, minute);
@@ -49,11 +54,21 @@ void menu_set_time() {
 		delay(IFACE_MS);
 		button_pin = poll_buttons();
 	}
-	Serial.println("set clock = " + String(hour) + ":" + String(minute));
 	clock.setHour(hour);
 	clock.setMinute(minute);
-	millis_offset_now = (hour * 60l + minute) * 60l * 1000l - millis();
+
+	Serial.println("set clock = " + String(hour) + ":" + String(minute));
+	
 	schedule_until = millis();
+}
+
+void sprintf_duration(char *buf, t_schedule_item item) {
+	if ((item.duration_5m * 5) % 60 == 0)
+		sprintf(buf, "%2dh\0", item.duration_5m * 5 / 60);
+	else if (item.duration_5m * 5 < 100)
+		sprintf(buf, "%2dm\0", item.duration_5m * 5);
+	else
+		sprintf(buf, "%3d\0", item.duration_5m * 5);
 }
 
 void schedule_row_to_buf(char *buf, t_schedule_item item) {
@@ -62,14 +77,16 @@ void schedule_row_to_buf(char *buf, t_schedule_item item) {
 		sprintf(buf, "OFF\0");
 		return;
 	}
+	char duration_str[4];
+	sprintf_duration(duration_str, item);
 	sprintf(
 		buf, 
-		"%5s %3s %02d:%02d %3d\0",
+		"%5s %3s %02d:%02d %3s\0",
 		get_mode_str(nibble_to_mode(item.mode_speed)),
 		get_speed_str(nibble_to_speed(item.mode_speed)),
 		item.start_time_m / 60,
 		item.start_time_m % 60,
-		item.duration_5m * 5);
+		duration_str);
 }
 
 void menu_edit_schedule_show(byte row_index) {
@@ -127,8 +144,18 @@ void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
 	lcd.setCursor(1, 0);
 	lcd.print("Set Duration");
 
+	char duration_str[5];
+	sprintf_duration(duration_str, schedule[sched_row]);
+	lcd.setCursor(16, 0);
+	lcd.print(duration_str);
+
 	lcd.setCursor(1, 1);
-	lcd.print("Set Start Time");
+	lcd.print("Set Start");
+	sprintf(duration_str, "%02d:%02d\0", 
+		schedule[sched_row].start_time_m / 60,
+		schedule[sched_row].start_time_m % 60);
+	lcd.setCursor(15, 1);
+	lcd.print(duration_str);
 
 	lcd.setCursor(0, 3);
 	char buf[21];
@@ -304,26 +331,37 @@ byte wait_button_release() {
 
 byte poll_buttons() {
 	for (byte i = 0; i < NUM_BUTTONS; i++) {
-		if (digitalRead(INPUT_BUTTON_PINS[i]) == LOW)
+		if (digitalRead(INPUT_BUTTON_PINS[i]) == LOW) {
+			last_button_press = millis();
 			return INPUT_BUTTON_PINS[i];
+		}
 	}
 	return 0;
 }
 
 void handle_input() {
 	byte pressed_button_pin = poll_buttons();
+	if (pressed_button_pin != 0)
+		Serial.println("Detected button pin " + String(pressed_button_pin));
+	if (pressed_button_pin == 13) 
+		Serial.println("got 13 / " + String(PIN_BUTTON_MENU_UP));
 	switch (pressed_button_pin) {
+		case PIN_BUTTON_MENU_OK:
+			menu_root();
+			lcd.clear();
+			break;
 		case PIN_BUTTON_MENU_DOWN:
-			if (schedule_until - (15l*60l*1000l) > millis())
+			// Due to rollover nonsense, we have to check for overflow
+			long time_since = millis() - schedule_until;
+			long time_until = schedule_until - millis();
+
+			if (time_until > (15l*60l*1000l) && time_since == -time_until)
 				schedule_until = schedule_until - (15l*60l*1000l);
 			else
 				schedule_until = millis();
 			Serial.println("Decreased schedule_until to " + String(schedule_until));
 			break;
-		case PIN_BUTTON_MENU_OK:
-			menu_root();
-			lcd.clear();
-			break;
+
 		case PIN_BUTTON_MENU_UP:
 			schedule_until = schedule_until + (15l*60l*1000l);
 			Serial.println("Increased schedule_until to " + String(schedule_until));
@@ -359,8 +397,12 @@ void handle_input() {
 			break;
 		
 		default:
+			Serial.println("Hit default case in pin " + String(pressed_button_pin));
 			break;
 	}
+	if (pressed_button_pin != 0)
+		Serial.println("Completed button pin " + String(pressed_button_pin));
+	
 	
 }
 
@@ -382,29 +424,25 @@ char * get_speed_str(t_speed spd) {
 }
 
 void update_display() {
-	//lcd.clear();
-	//lcd.cursor();
-
 	char buf[21];
 
 	// show current time
 	lcd.setCursor(11, 0);
-	/*
+	
 	bool am_pm_enabled;
 	bool pm_time;
 
-	lcd.print(clock.getHour(am_pm_enabled, pm_time));
-	lcd.print(":");
-	lcd.print(clock.getMinute());
-	lcd.print(":");
-	lcd.print(clock.getSecond());
-	*/
-	unsigned int now = (millis() + millis_offset_now) / 1000l;
+	int hour = clock.getHour(am_pm_enabled, pm_time);
+	int minute = clock.getMinute();
+	int second = clock.getSecond();
+
+	//Serial.println("Got now=" + String(hour) + ":" + String(minute) + ":" + String(second));
+
 	sprintf(
-		buf, "%02u:%02u:%02u\0", 
-		now / 60 / 60,
-		now / 60 % 60,
-		now % 60);
+		buf, "%02d:%02d:%02d\0", 
+		hour,
+		minute,
+		second);
 	lcd.print(buf);
 
 	lcd.setCursor(0, 1);
@@ -414,20 +452,30 @@ void update_display() {
 	lcd.print(get_speed_str(speed));
 
 	lcd.print(" ");
-	int time_left = (schedule_until - millis()) / 1000l;
+	int time_left = abs(schedule_until - millis()) / 1000l;
 	int time_in_mode = (millis() - last_mode_change) / 1000l;
+	char time_in_mode_str[4];
+
+	if (time_in_mode < 60) 
+		sprintf(time_in_mode_str, "%2ds\0", time_in_mode);
+	else if (time_in_mode < 60*60)
+		sprintf(time_in_mode_str, "%2dm\0", time_in_mode / 60);
+	else
+		sprintf(time_in_mode_str, "%2dh\0", time_in_mode / 60 / 60);
+
 	sprintf(
-		buf, "%02d:%02d %3d\0", 
+		buf, "%02d:%02d %3s\0", 
 		time_left / 60 / 60,
 		time_left / 60 % 60,
-		time_in_mode / 60);
+		time_in_mode_str);
 	lcd.print(buf);
 	int next_after_m = get_now_m() + time_left / 60;
-	byte next_schedule_item_idx = get_next_schedule_item_idx(current_schedule_item_idx, next_after_m);
-
-	schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
-	lcd.setCursor(1, 2);
-	lcd.print(buf);
+	int next_schedule_item_idx = get_next_schedule_item_idx(current_schedule_item_idx, next_after_m);
+	if (next_schedule_item_idx >= 0) {
+		schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+		lcd.setCursor(1, 2);
+		lcd.print(buf);
+	}
 
 	lcd.setCursor(0, 3);
 	if (valves_moving_until != 0) {
@@ -436,8 +484,10 @@ void update_display() {
 	} else {
 		next_after_m = schedule[next_schedule_item_idx].start_time_m + schedule[next_schedule_item_idx].duration_5m * 5;
 		next_schedule_item_idx = get_next_schedule_item_idx(next_schedule_item_idx, next_after_m);
-		schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
-		lcd.setCursor(1, 3);
-		lcd.print(buf);
+		if (next_schedule_item_idx >= 0) {
+			schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+			lcd.setCursor(1, 3);
+			lcd.print(buf);
+		}
 	}
 }

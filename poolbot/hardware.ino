@@ -15,13 +15,13 @@ bool start_cleaner() {
 		return false;
 	}
 	Serial.println("start_cleaner");
-	digitalWrite(PIN_CLEANER_PUMP, HIGH);
+	digitalWrite(PIN_CLEANER_PUMP, LOW);
 	return true;
 }
 
 void stop_cleaner() {
 	Serial.println("stop_cleaner");
-	digitalWrite(PIN_CLEANER_PUMP, LOW);
+	digitalWrite(PIN_CLEANER_PUMP, HIGH);
 }
 
 bool start_heater() {
@@ -96,17 +96,22 @@ void set_mode(t_mode md) {
 
 		if (md == MODE_SPA) {
 			Serial.println("IN=SPA");
-			digitalWrite(PIN_VALVE_IN_SPA, HIGH);
+			//digitalWrite(PIN_VALVE_IN_SPA, HIGH);
+			digitalWrite(PIN_VALVE_IN_SPA, LOW);
 		} else {
 			Serial.println("IN=POOL");
-			digitalWrite(PIN_VALVE_IN_SPA, LOW);
+			//digitalWrite(PIN_VALVE_IN_SPA, LOW);
+			digitalWrite(PIN_VALVE_IN_SPA, HIGH);
 		}
 		if (md == MODE_SPA || md == MODE_SPILL) {
 			Serial.println("OUT=SPA");
-			digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+			//digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+			digitalWrite(PIN_VALVE_OUT_SPA, LOW);
 		} else {
 			Serial.println("OUT=POOL");
-			digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+			//digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+			digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+
 		}
 		last_mode_change = millis();
 	}
@@ -127,10 +132,7 @@ void set_mode(t_mode md) {
 		if (schedule_until > safe_time)
 			schedule_until = safe_time;
 	}
-	
-	/*if (schedule_until <= millis()) {
-		schedule_until = millis() + (1000l * 60l * DEFAULT_DURATION_M);
-	}*/
+
 	mode = md;
 }
 

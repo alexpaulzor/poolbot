@@ -11,7 +11,7 @@ byte current_schedule_item_idx = SCHED_SLOTS + 1;
 unsigned long valves_moving_until = 0;
 unsigned long schedule_until = 0;
 unsigned long last_mode_change = 0;
-long millis_offset_now = 0;
+unsigned long last_button_press = 0;
 
 void setup() {
 	Serial.begin(9600);
