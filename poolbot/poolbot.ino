@@ -12,11 +12,14 @@ unsigned long valves_moving_until = 0;
 unsigned long schedule_until = 0;
 unsigned long last_mode_change = 0;
 unsigned long last_button_press = 0;
+int valve_current = 0;
+bool heat_on = false;
+bool stopped = true;
 
 void setup() {
 	Serial.begin(9600);
 	//pinMode(PIN_FLOW_SWITCH, INPUT);
-	//pinMode(PIN_VALVE_CURRENT, INPUT);
+	pinMode(PIN_VALVE_CURRENT, INPUT);
 	
 	pinMode(PIN_PUMP_STOP, OUTPUT);
 	pinMode(PIN_VALVE_IN_SPA, OUTPUT);

@@ -39,12 +39,14 @@ bool start_heater() {
 		return false;
 	}
 	Serial.println("start_heater");
+	heat_on = true;
 	digitalWrite(PIN_HEAT, HIGH);
 	return true;
 }
 
 void stop_heater() {
 	Serial.println("stop_heater");
+	heat_on = false;
 	digitalWrite(PIN_HEAT, LOW);
 }
 
@@ -52,16 +54,19 @@ void stop_pumps() {
 	stop_cleaner();
 	stop_heater();
 	Serial.println("stop_pumps");
+	stopped = true;
 	digitalWrite(PIN_PUMP_STOP, HIGH);
 	last_mode_change = millis();
 }
 
 void unstop_pump() {
 	Serial.println("unstop_pump");
-	if (speed != SPEED_OFF)
+	if (speed != SPEED_OFF) {
+		stopped = false;
 		digitalWrite(PIN_PUMP_STOP, LOW);
-	else
+	} else {
 		Serial.println("(speed=OFF)");
+	}
 	last_mode_change = millis();
 }
 
@@ -90,9 +95,10 @@ bool needs_valve_transition(t_mode from_mode, t_mode to_mode) {
 }
 
 void set_mode(t_mode md) {
+	Serial.println("set_mode " + String(md) + " (from " + String(mode) + ")");
 	if (needs_valve_transition(mode, md)) {
 		stop_pumps();
-		valves_moving_until = millis() + VALVE_MOVE_TIME_MS;
+		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 
 		if (md == MODE_SPA) {
 			Serial.println("IN=SPA");
@@ -122,6 +128,7 @@ void set_mode(t_mode md) {
 		set_speed(SPEED_MAX);
 		if (schedule_until > safe_time)
 			schedule_until = safe_time;
+		valves_moving_until = max(valves_moving_until, millis());
 	}
 	if (md == MODE_SPILL)
 		set_speed(SPEED_MIN);
@@ -131,15 +138,26 @@ void set_mode(t_mode md) {
 		set_speed(SPEED_HI);
 		if (schedule_until > safe_time)
 			schedule_until = safe_time;
+		valves_moving_until = max(valves_moving_until, millis());
 	}
 
 	mode = md;
 }
 
 void complete_mode_transition() {
-	if (valves_moving_until == 0 || valves_moving_until > millis())
+	if (valves_moving_until == 0)
 		return;
-	
+		
+	if (valves_moving_until > millis()) {
+		valve_current = map(
+			analogRead(PIN_VALVE_CURRENT), 
+			0, CURRENT_MAX, -CURRENT_MAX_MA, CURRENT_MAX_MA);
+		if (abs(valve_current) > 1000 || (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
+			Serial.println("Have valve current: " + String(valve_current) + "mA " + String((valves_moving_until - millis())/1000l) + "s / " + String((MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)/1000l) + "s");
+			return;
+		}
+	}
+
 	valves_moving_until = 0;
 	set_speed(speed);
 
@@ -151,6 +169,7 @@ void complete_mode_transition() {
 }
 
 void set_speed(t_speed spd) {
+	Serial.println("set_speed " + String(spd) + " (from " + String(speed) + ")");
 	speed = spd;
 	if (valves_moving_until != 0 || spd == SPEED_OFF) {
 		stop_pumps();

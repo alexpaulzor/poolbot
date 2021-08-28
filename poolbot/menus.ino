@@ -343,62 +343,43 @@ void handle_input() {
 	byte pressed_button_pin = poll_buttons();
 	if (pressed_button_pin != 0)
 		Serial.println("Detected button pin " + String(pressed_button_pin));
-	if (pressed_button_pin == 13) 
-		Serial.println("got 13 / " + String(PIN_BUTTON_MENU_UP));
-	switch (pressed_button_pin) {
-		case PIN_BUTTON_MENU_OK:
-			menu_root();
-			lcd.clear();
-			break;
-		case PIN_BUTTON_MENU_DOWN:
+	
+	if (pressed_button_pin == PIN_BUTTON_MENU_UP) {
+		schedule_until = schedule_until + (15l*60l*1000l);
+		Serial.println("Increased schedule_until to " + String(schedule_until));
+	} else if (pressed_button_pin == PIN_BUTTON_MENU_OK) {
+		menu_root();
+		lcd.clear();
+	} else if (pressed_button_pin == PIN_BUTTON_MENU_DOWN) {
 			// Due to rollover nonsense, we have to check for overflow
-			long time_since = millis() - schedule_until;
-			long time_until = schedule_until - millis();
+		long time_since = millis() - schedule_until;
+		long time_until = schedule_until - millis();
 
-			if (time_until > (15l*60l*1000l) && time_since == -time_until)
-				schedule_until = schedule_until - (15l*60l*1000l);
-			else
-				schedule_until = millis();
-			Serial.println("Decreased schedule_until to " + String(schedule_until));
-			break;
+		if (time_until > (15l*60l*1000l) && time_since == -time_until) {
+			schedule_until = schedule_until - (15l*60l*1000l);
+		} else {
+			schedule_until = millis();
+		}
+		Serial.println("Decreased schedule_until to " + String(schedule_until));
 
-		case PIN_BUTTON_MENU_UP:
-			schedule_until = schedule_until + (15l*60l*1000l);
-			Serial.println("Increased schedule_until to " + String(schedule_until));
-			break;
-		
-		case PIN_BUTTON_MODE_SPA:
-			set_mode(MODE_SPA);
-			break;
-		case PIN_BUTTON_MODE_SPILL:
-			set_mode(MODE_SPILL);
-			break;
-		case PIN_BUTTON_MODE_POOL:
-			set_mode(MODE_POOL);
-			break;
-		case PIN_BUTTON_MODE_CLEAN:
-			set_mode(MODE_CLEAN);
-			break;
-
-		case PIN_BUTTON_SPEED_OFF:
-			set_speed(SPEED_OFF);
-			break;
-		case PIN_BUTTON_SPEED_MIN:
-			set_speed(SPEED_MIN);
-			break;
-		case PIN_BUTTON_SPEED_LOW:
-			set_speed(SPEED_LOW);
-			break;
-		case PIN_BUTTON_SPEED_HI:
-			set_speed(SPEED_HI);
-			break;
-		case PIN_BUTTON_SPEED_MAX:
-			set_speed(SPEED_MAX);
-			break;
-		
-		default:
-			Serial.println("Hit default case in pin " + String(pressed_button_pin));
-			break;
+	} else if (pressed_button_pin == PIN_BUTTON_MODE_SPA) {
+		set_mode(MODE_SPA);
+	} else if (pressed_button_pin == PIN_BUTTON_MODE_SPILL) {
+		set_mode(MODE_SPILL);
+	} else if (pressed_button_pin == PIN_BUTTON_MODE_POOL) {
+		set_mode(MODE_POOL);
+	} else if (pressed_button_pin == PIN_BUTTON_MODE_CLEAN) {
+		set_mode(MODE_CLEAN);
+	} else if (pressed_button_pin == PIN_BUTTON_SPEED_OFF) {
+		set_speed(SPEED_OFF);
+	} else if (pressed_button_pin == PIN_BUTTON_SPEED_MIN) {
+		set_speed(SPEED_MIN);
+	} else if (pressed_button_pin == PIN_BUTTON_SPEED_LOW) {
+		set_speed(SPEED_LOW);
+	} else if (pressed_button_pin == PIN_BUTTON_SPEED_HI) {
+		set_speed(SPEED_HI);
+	} else if (pressed_button_pin == PIN_BUTTON_SPEED_MAX) {
+		set_speed(SPEED_MAX);
 	}
 	if (pressed_button_pin != 0)
 		Serial.println("Completed button pin " + String(pressed_button_pin));
@@ -425,6 +406,15 @@ char * get_speed_str(t_speed spd) {
 
 void update_display() {
 	char buf[21];
+
+	lcd.setCursor(0, 0);
+	if (heat_on) {
+		lcd.print("HEATER \0");
+	} else if (stopped) {
+		lcd.print("STOPPED\0");
+	} else {
+		lcd.print("       \0");
+	}
 
 	// show current time
 	lcd.setCursor(11, 0);
@@ -478,9 +468,13 @@ void update_display() {
 	}
 
 	lcd.setCursor(0, 3);
-	if (valves_moving_until != 0) {
-		long valve_time_left = (valves_moving_until - millis()) / 1000l;
-		lcd.print("Moving (" + String(valve_time_left) + "s)...");
+	time_left = abs(valves_moving_until - millis()) / 1000l;
+	if (valves_moving_until > millis()) {
+		sprintf(buf, 
+			"Moving (%2ds/%5dmA)\0",
+			time_left,
+			valve_current);
+		lcd.print(buf);
 	} else {
 		next_after_m = schedule[next_schedule_item_idx].start_time_m + schedule[next_schedule_item_idx].duration_5m * 5;
 		next_schedule_item_idx = get_next_schedule_item_idx(next_schedule_item_idx, next_after_m);
