@@ -13,7 +13,9 @@ unsigned long schedule_until = 0;
 unsigned long last_mode_change = 0;
 unsigned long last_button_press = 0;
 int valve_current = 0;
+unsigned long last_valve_current = 0;
 bool heat_on = false;
+bool cleaner_on = false;
 bool stopped = true;
 
 void setup() {

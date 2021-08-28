@@ -106,11 +106,14 @@ void complete_schedule_item() {
 	// Due to rollover nonsense, we have to check for overflow
 	long time_since = millis() - schedule_until;
 	long time_until = schedule_until - millis();
-	if (time_since != -time_until)
-		schedule_until = millis();
+	if (abs(time_since + time_until) > 2) {
+		Serial.println("Resetting schedule_until from " + String(schedule_until) + " since=" + String(time_since) + " until=" + String(time_until));
+		schedule_until = min(schedule_until, millis());
+
+	}
 	if (schedule_until > millis())
 		return;
-	Serial.println("schedule_until reached");
+	Serial.println("schedule_until=" + String(schedule_until) + " reached");
 	int next_item_idx = get_next_schedule_item_idx(
 		current_schedule_item_idx, get_now_m());
 	t_schedule_item next_item;

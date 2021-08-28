@@ -15,12 +15,14 @@ bool start_cleaner() {
 		return false;
 	}
 	Serial.println("start_cleaner");
+	cleaner_on = true;
 	digitalWrite(PIN_CLEANER_PUMP, LOW);
 	return true;
 }
 
 void stop_cleaner() {
 	Serial.println("stop_cleaner");
+	cleaner_on = false;
 	digitalWrite(PIN_CLEANER_PUMP, HIGH);
 }
 
@@ -96,8 +98,13 @@ bool needs_valve_transition(t_mode from_mode, t_mode to_mode) {
 
 void set_mode(t_mode md) {
 	Serial.println("set_mode " + String(md) + " (from " + String(mode) + ")");
-	if (needs_valve_transition(mode, md)) {
+	t_mode old_mode = mode;
+	mode = md;
+	if (needs_valve_transition(old_mode, md)) {
 		stop_pumps();
+		// TODO: check flow switch
+		update_display();
+		delay(3000);
 		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 
 		if (md == MODE_SPA) {
@@ -140,8 +147,6 @@ void set_mode(t_mode md) {
 			schedule_until = safe_time;
 		valves_moving_until = max(valves_moving_until, millis());
 	}
-
-	mode = md;
 }
 
 void complete_mode_transition() {
@@ -149,10 +154,12 @@ void complete_mode_transition() {
 		return;
 		
 	if (valves_moving_until > millis()) {
-		valve_current = map(
+		valve_current = abs(map(
 			analogRead(PIN_VALVE_CURRENT), 
-			0, CURRENT_MAX, -CURRENT_MAX_MA, CURRENT_MAX_MA);
-		if (abs(valve_current) > 1000 || (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
+			0, CURRENT_MAX, -CURRENT_MAX_MA, CURRENT_MAX_MA));
+		if (valve_current > 1000)
+			last_valve_current = millis();
+		if (/*millis() - last_valve_current < MIN_VALVE_MOVE_TIME_MS ||*/ (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
 			Serial.println("Have valve current: " + String(valve_current) + "mA " + String((valves_moving_until - millis())/1000l) + "s / " + String((MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)/1000l) + "s");
 			return;
 		}
@@ -160,11 +167,18 @@ void complete_mode_transition() {
 
 	valves_moving_until = 0;
 	set_speed(speed);
-
-	if (mode == MODE_CLEAN)
+	lcd.clear();
+	update_display();
+	if (mode == MODE_CLEAN) {
+		// TODO: check flow switch?
+		delay(10000);
 		start_cleaner();
-	if (mode == MODE_SPA)
+	}
+	if (mode == MODE_SPA) {
+		// TODO: check flow switch?
+		delay(10000);
 		start_heater();
+	}
 	lcd.clear();
 }
 

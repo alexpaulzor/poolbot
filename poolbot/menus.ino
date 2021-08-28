@@ -332,7 +332,6 @@ byte wait_button_release() {
 byte poll_buttons() {
 	for (byte i = 0; i < NUM_BUTTONS; i++) {
 		if (digitalRead(INPUT_BUTTON_PINS[i]) == LOW) {
-			last_button_press = millis();
 			return INPUT_BUTTON_PINS[i];
 		}
 	}
@@ -341,8 +340,13 @@ byte poll_buttons() {
 
 void handle_input() {
 	byte pressed_button_pin = poll_buttons();
-	if (pressed_button_pin != 0)
+	if (pressed_button_pin != 0) {
+		last_button_press = millis();
+		lcd.backlight();
 		Serial.println("Detected button pin " + String(pressed_button_pin));
+	} else if (millis() - last_button_press > BACKLIGHT_TIMEOUT_MS) {
+		lcd.noBacklight();
+	}
 	
 	if (pressed_button_pin == PIN_BUTTON_MENU_UP) {
 		schedule_until = schedule_until + (15l*60l*1000l);
@@ -408,7 +412,9 @@ void update_display() {
 	char buf[21];
 
 	lcd.setCursor(0, 0);
-	if (heat_on) {
+	if (cleaner_on) {
+		lcd.print("CLEANER\0");
+	} else if (heat_on) {
 		lcd.print("HEATER \0");
 	} else if (stopped) {
 		lcd.print("STOPPED\0");
