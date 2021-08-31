@@ -4,11 +4,12 @@ DS3231 clock;
 
 t_mode mode = MODE_UNKNOWN;
 t_speed speed = SPEED_OFF;
+t_state state = STATE_RUN;
 
 t_schedule_item schedule[SCHED_SLOTS];
 byte current_schedule_item_idx = SCHED_SLOTS + 1;
 
-unsigned long valves_moving_until = 0;
+unsigned long in_state_until = 0;
 unsigned long schedule_until = 0;
 unsigned long last_mode_change = 0;
 unsigned long last_button_press = 0;
@@ -55,7 +56,6 @@ void setup() {
 	lcd.init();
 	lcd.noBacklight();
 	lcd.clear();
-	delay(IFACE_MS);
 	set_speed(SPEED_OFF);
 	set_mode(MODE_POOL);
 	schedule_until = millis();

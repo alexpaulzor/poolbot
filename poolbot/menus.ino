@@ -413,13 +413,15 @@ void update_display() {
 
 	lcd.setCursor(0, 0);
 	if (cleaner_on) {
-		lcd.print("CLEANER\0");
+		lcd.print("CLEANER \0");
 	} else if (heat_on) {
-		lcd.print("HEATER \0");
+		lcd.print("HEATER  \0");
 	} else if (stopped) {
-		lcd.print("STOPPED\0");
+		lcd.print("STOPPED \0");
+	} else if (state == STATE_STARTING) {
+		lcd.print("STARTING\0");
 	} else {
-		lcd.print("       \0");
+		lcd.print("        \0");
 	}
 
 	// show current time
@@ -474,8 +476,8 @@ void update_display() {
 	}
 
 	lcd.setCursor(0, 3);
-	time_left = abs(valves_moving_until - millis()) / 1000l;
-	if (valves_moving_until > millis()) {
+	time_left = abs(in_state_until - millis()) / 1000l;
+	if (in_state_until > millis() && state == STATE_MOVING) {
 		sprintf(buf, 
 			"Moving (%2ds/%5dmA)\0",
 			time_left,
