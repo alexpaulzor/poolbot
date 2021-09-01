@@ -70,6 +70,7 @@ void unstop_pump() {
 		Serial.println("(speed=OFF)");
 	}
 	last_mode_change = millis();
+	starting_until = millis() + STARTUP_MS;
 }
 
 bool needs_valve_transition(t_mode from_mode, t_mode to_mode) {
@@ -103,10 +104,10 @@ void set_mode(t_mode md) {
 	if (needs_valve_transition(old_mode, md)) {
 		stop_pumps();
 		// TODO: check flow switch
-		strcpy(state_msg, "STOPPING\0");
+		strcpy(state_msg, "STOPPING \0");
 		update_display();
 		delay(3000);
-		strcpy(state_msg, "MOVING\0");
+		strcpy(state_msg, "MOVING   \0");
 		update_display();
 		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 
@@ -152,6 +153,22 @@ void set_mode(t_mode md) {
 }
 
 void complete_mode_transition() {
+	if (starting_until > millis() && valves_moving_until == 0) {
+		if (mode == MODE_CLEAN) {
+			// TODO: check flow switch?
+			//delay(10000);
+			start_cleaner();
+		} else if (mode == MODE_SPA) {
+			// TODO: check flow switch?
+			//delay(10000);
+			start_heater();
+		} 
+		starting_until = 0;
+		strcpy(state_msg, "         \0");
+		update_display();
+		return;
+	}
+
 	if (valves_moving_until == 0)
 		return;
 		
@@ -170,19 +187,12 @@ void complete_mode_transition() {
 	valves_moving_until = 0;
 	set_speed(speed);
 	lcd.clear();
-	strcpy(state_msg, "STARTING\0");
+	strcpy(state_msg, "STARTING \0");
 	update_display();
-	if (mode == MODE_CLEAN) {
-		// TODO: check flow switch?
-		delay(10000);
-		start_cleaner();
-	} else if (mode == MODE_SPA) {
-		// TODO: check flow switch?
-		delay(10000);
-		start_heater();
-	} 
+	starting_until = millis() + STARTUP_MS;
+	/*
 	strcpy(state_msg, "\0");
-	update_display();
+	update_display();*/
 }
 
 void set_speed(t_speed spd) {
