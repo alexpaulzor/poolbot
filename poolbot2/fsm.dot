@@ -1,0 +1,42 @@
+digraph {
+
+    unknown_off [label="md=UNKNOWN\nspd=OFF", shape=doublecircle];
+    pool_off [label="md=POOL\nspd=OFF"];
+    pool_min [label="md=POOL\nspd=MIN"];
+    pool_low [label="md=POOL\nspd=LOW"];
+    pool_hi [label="md=POOL\nspd=HI"];
+    pool_max [label="md=POOL\nspd=MAX"];
+
+    spa_off [label="md=SPA\nspd=OFF"];
+    spa_min [label="md=SPA\nspd=MIN"];
+    spa_low [label="md=SPA\nspd=LOW"];
+    spa_hi [label="md=SPA\nspd=HI"];
+    spa_max [label="md=SPA\nspd=MAX"];
+
+    spa_hi_heat [label="md=SPA\nspd=HI\nHEAT"];
+    spa_max_heat [label="md=SPA\nspd=MAX\nHEAT"];
+
+    spill_off [label="md=SPILL\nspd=OFF"];
+    spill_min [label="md=SPILL\nspd=MIN"];
+    spill_low [label="md=SPILL\nspd=LOW"];
+    spill_hi [label="md=SPILL\nspd=HI"];
+    spill_max [label="md=SPILL\nspd=MAX"];
+
+    clean_hi [label="md=CLEAN\nspd=HI"];
+    clean_max [label="md=CLEAN\nspd=MAX"];
+
+    clean_hi_clean [label="md=CLEAN\nspd=HI\nCLEAN"];
+    clean_max_clean [label="md=CLEAN\nspd=MAX\nCLEAN"];
+
+    unknown_off -> pool_off [penwidth=3, label="setup()"];
+    spa_hi -> spa_hi_heat [penwidth=3, label="10s"];
+    spa_max -> spa_max_heat [penwidth=3, label="10s"];
+    clean_hi -> clean_hi_clean [penwidth=3, label="10s"];
+    clean_max -> clean_max_clean [penwidth=3, label="10s"];
+
+    pool_off -> pool_min, pool_low, pool_hi, pool_max [style=dashed];
+    pool_min -> pool_off, pool_low, pool_hi, pool_max [style=dashed];
+    pool_low -> pool_min, pool_off, pool_hi, pool_max [style=dashed];
+    pool_hi -> pool_min, pool_low, pool_off, pool_max [style=dashed];
+    pool_max -> pool_min, pool_low, pool_hi, pool_off [style=dashed];
+}
