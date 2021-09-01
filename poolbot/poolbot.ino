@@ -17,6 +17,7 @@ unsigned long last_valve_current = 0;
 bool heat_on = false;
 bool cleaner_on = false;
 bool stopped = true;
+char state_msg[10] = "\0";
 
 void setup() {
 	Serial.begin(9600);

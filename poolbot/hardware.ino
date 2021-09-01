@@ -103,8 +103,11 @@ void set_mode(t_mode md) {
 	if (needs_valve_transition(old_mode, md)) {
 		stop_pumps();
 		// TODO: check flow switch
+		strcpy(state_msg, "STOPPING\0");
 		update_display();
 		delay(3000);
+		strcpy(state_msg, "MOVING\0");
+		update_display();
 		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 
 		if (md == MODE_SPA) {
@@ -126,7 +129,6 @@ void set_mode(t_mode md) {
 			digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
 
 		}
-		last_mode_change = millis();
 	}
 
 	unsigned long safe_time = millis() + (1000l * 60l * DEFAULT_DURATION_M * 4);
@@ -168,18 +170,19 @@ void complete_mode_transition() {
 	valves_moving_until = 0;
 	set_speed(speed);
 	lcd.clear();
+	strcpy(state_msg, "STARTING\0");
 	update_display();
 	if (mode == MODE_CLEAN) {
 		// TODO: check flow switch?
 		delay(10000);
 		start_cleaner();
-	}
-	if (mode == MODE_SPA) {
+	} else if (mode == MODE_SPA) {
 		// TODO: check flow switch?
 		delay(10000);
 		start_heater();
-	}
-	lcd.clear();
+	} 
+	strcpy(state_msg, "\0");
+	update_display();
 }
 
 void set_speed(t_speed spd) {

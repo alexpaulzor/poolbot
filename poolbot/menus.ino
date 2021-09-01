@@ -412,7 +412,9 @@ void update_display() {
 	char buf[21];
 
 	lcd.setCursor(0, 0);
-	if (cleaner_on) {
+	if (state_msg[0] != "\0") {
+		lcd.print(state_msg);
+	} else if (cleaner_on) {
 		lcd.print("CLEANER\0");
 	} else if (heat_on) {
 		lcd.print("HEATER \0");
