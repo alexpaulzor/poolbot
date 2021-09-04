@@ -7,7 +7,7 @@
 #include <LiquidCrystal_I2C.h>
 
 #define IFACE_MS 100
-#define BACKLIGHT_TIMEOUT_MS 45000l
+#define BACKLIGHT_TIMEOUT_MS 300000l
 #define DEFAULT_DURATION_M 60l
 
 #define MAX_VALVE_MOVE_TIME_MS 40000l

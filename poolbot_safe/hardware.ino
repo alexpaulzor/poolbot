@@ -58,7 +58,6 @@ void stop_pumps() {
 	Serial.println("stop_pumps");
 	stopped = true;
 	digitalWrite(PIN_PUMP_STOP, LOW);
-	last_mode_change = millis();
 
 	lcd.clear();
 	unsigned long now = millis();
@@ -88,7 +87,6 @@ void unstop_pump() {
 	} else {
 		Serial.println("(speed=OFF)");
 	}
-	last_mode_change = millis();
 }
 
 bool needs_valve_transition(t_mode from_mode, t_mode to_mode) {
@@ -120,13 +118,16 @@ void set_mode(t_mode md) {
 	t_mode old_mode = mode;
 
 	mode = md;
+
+	if (old_mode != md) {
+		last_mode_change = millis();
+	}
 	unsigned long safe_time = millis() + (1000l * 60l * DEFAULT_DURATION_M * 4);
 
 	if (md == MODE_SPA) {
 		set_speed(SPEED_MAX);
 		if (schedule_until > safe_time)
 			schedule_until = safe_time;
-		valves_moving_until = max(valves_moving_until, millis());
 	}
 	if (md == MODE_SPILL)
 		set_speed(SPEED_MIN);
@@ -136,12 +137,6 @@ void set_mode(t_mode md) {
 		set_speed(SPEED_HI);
 		if (schedule_until > safe_time)
 			schedule_until = safe_time;
-		valves_moving_until = max(valves_moving_until, millis());
-	}
-
-	if (old_mode == md && !valves_moving()) {
-		complete_mode_transition();
-		return;
 	}
 
 	if (needs_valve_transition(old_mode, md)) {
@@ -167,42 +162,42 @@ void set_mode(t_mode md) {
 
 		}
 		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
-		last_mode_change = millis();
+		
+	} else {
+		valves_moving_until = max(valves_moving_until, millis());
 	}
+	last_mode_change = millis();
+	complete_mode_transition();
 
 	lcd.clear();
 }
 
 void complete_mode_transition() {
-	if (valves_moving_until == 0)
-		return;
-		
 	if (valves_moving_until > millis()) {
 		if (valves_moving() || (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
 			Serial.println("Waiting " + String((valves_moving_until - millis()) / 1000l) + "s to valve transition");
 			return;
 		}
 	}
-
-	valves_moving_until = 0;
-	set_speed(speed);
-	lcd.clear();
-	unsigned long now = millis();
-	lcd.setCursor(0, 0);
-	if (mode == MODE_CLEAN) {
-		lcd.print("Starting cleaner...");
-		if (has_flow())
-			start_cleaner();
+	if (valves_moving_until != 0) {
+		valves_moving_until = 0;
+		set_speed(speed);
 	}
-	if (mode == MODE_SPA) {
-		lcd.print("Starting heater...");
-		if (has_flow())
-			start_heater();
+	if (mode == MODE_CLEAN && !cleaner_on && has_flow()) {
+		start_cleaner();
 	}
-	lcd.clear();
+	if (mode == MODE_SPA && !heat_on && has_flow()) {
+		start_heater();
+	}
 }
 
 void set_speed(t_speed spd) {
+	/* 
+	NB: Pump refuses to obey SPEED_HI -> SPEED_MAX transition.
+	    All other transitions appear to work ok.
+	*/
+	if (spd == SPEED_MAX && speed == SPEED_HI)
+		set_speed(SPEED_LOW);
 	Serial.println("set_speed " + String(spd) + " (from " + String(speed) + ")");
 	speed = spd;
 	
@@ -250,6 +245,8 @@ int read_valve_current() {
 }
 
 bool valves_moving() {
+	if (valves_moving_until == 0)
+		return false;
 	return read_valve_current() > VALVE_CURRENT_MOVING_MA;
 }
 
