@@ -10,12 +10,12 @@
 #define BACKLIGHT_TIMEOUT_MS 45000l
 #define DEFAULT_DURATION_M 60l
 
-#define MAX_VALVE_MOVE_TIME_MS 40000l
+#define MAX_VALVE_MOVE_TIME_MS 40000l // TODO: remove
 #define MIN_VALVE_MOVE_TIME_MS 35000l
 
 
-// #define PIN_FLOW_SWITCH 0  // TODO
-// #define PIN_VALVE_CURRENT A1
+#define PIN_FLOW_SWITCH 9
+#define PIN_VALVE_CURRENT A1
 #define PIN_PUMP_STOP 2 // RELAY4IN1
 #define PIN_PUMP_SPEED_STEP_1 3 // RELAY4IN2
 #define PIN_PUMP_SPEED_STEP_2 4 // RELAY4IN3
@@ -84,6 +84,8 @@ void unstop_pump();
 bool needs_valve_transition(t_mode from_mode, t_mode to_mode);
 bool start_cleaner();
 bool start_heater();
+int read_valve_current();
+bool has_flow();
 
 // TODO: helper function to handle millis() rollover
 

@@ -169,7 +169,21 @@ void handle_input() {
 		}
 		Serial.println("Decreased schedule_until to " + String(schedule_until));
 
-	} else if (pressed_button_pin == PIN_BUTTON_MODE_SPA) {
+	} else {
+		handle_mode_speed_input();
+	}
+	if (pressed_button_pin != 0)
+		Serial.println("Completed button pin " + String(pressed_button_pin));
+	
+	
+}
+
+void handle_mode_speed_input() {
+	_handle_mode_speed_input(poll_buttons());
+}
+
+void _handle_mode_speed_input(byte pressed_button_pin) {
+	if (pressed_button_pin == PIN_BUTTON_MODE_SPA) {
 		set_mode(MODE_SPA);
 	} else if (pressed_button_pin == PIN_BUTTON_MODE_SPILL) {
 		set_mode(MODE_SPILL);
@@ -188,10 +202,6 @@ void handle_input() {
 	} else if (pressed_button_pin == PIN_BUTTON_SPEED_MAX) {
 		set_speed(SPEED_MAX);
 	}
-	if (pressed_button_pin != 0)
-		Serial.println("Completed button pin " + String(pressed_button_pin));
-	
-	
 }
 
 char * get_mode_str(t_mode md) {
@@ -281,10 +291,16 @@ void update_display() {
 
 
 void diagnostics() {
+	char buf[21];
+	lcd.clear();
 	while (poll_buttons() != PIN_BUTTON_MENU_OK) {
-		
-
-		delay(delay(IFACE_MS);)
+		handle_mode_speed_input();
+		update_display();
+		int valve_current = read_valve_current();
+		bool flow = has_flow();
+		lcd.setCursor(0, 2);
+		sprintf(buf, "vlv %4d flo %2d ", valve_current, flow);
+		delay(IFACE_MS);
 	}
 }
 
