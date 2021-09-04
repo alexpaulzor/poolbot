@@ -26,3 +26,36 @@
 * safety features
   * heater only when in+out are spa and flow is present and pump is >= HI
   * cleaner only when in+out are pool and flow is present and pump is >= HI
+
+
+
+
+## Program design
+
+Timers:
+* valves_moving_until
+* schedule_until
+* last_button_pressed
+
+State:
+* mode
+* speed
+* stopped
+* heat_on
+* cleaner_on
+
+## Program flow
+
+* handle_input
+    * menu button -> root menu
+    * +/- -> adjust schedule_until
+    * mode buttons -> switch mode
+        * stop pump
+        * delay 5s (stopping)
+        * move valves
+        * delay 35s (monitor valve current, multisampled)
+        * start pump
+        * delay 10s (starting)
+        * start cleaner or heater (if applicable)
+
+    * speed buttons -> switch speed

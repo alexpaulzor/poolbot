@@ -57,7 +57,7 @@ void stop_pumps() {
 	stop_heater();
 	Serial.println("stop_pumps");
 	stopped = true;
-	digitalWrite(PIN_PUMP_STOP, HIGH);
+	digitalWrite(PIN_PUMP_STOP, LOW);
 	last_mode_change = millis();
 }
 
@@ -65,7 +65,7 @@ void unstop_pump() {
 	Serial.println("unstop_pump");
 	if (speed != SPEED_OFF) {
 		stopped = false;
-		digitalWrite(PIN_PUMP_STOP, LOW);
+		digitalWrite(PIN_PUMP_STOP, HIGH);
 	} else {
 		Serial.println("(speed=OFF)");
 	}

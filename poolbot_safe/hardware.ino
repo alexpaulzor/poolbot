@@ -1,4 +1,4 @@
-#include "poolbot2.h"
+#include "poolbot_safe.h"
 
 bool start_cleaner() {
 	// TODO: check/assert requirements for cleaner
@@ -57,7 +57,7 @@ void stop_pumps() {
 	stop_heater();
 	Serial.println("stop_pumps");
 	stopped = true;
-	digitalWrite(PIN_PUMP_STOP, LOW); 
+	digitalWrite(PIN_PUMP_STOP, LOW);
 	last_mode_change = millis();
 }
 
@@ -100,36 +100,32 @@ void set_mode(t_mode md) {
 	Serial.println("set_mode " + String(md) + " (from " + String(mode) + ")");
 	t_mode old_mode = mode;
 	mode = md;
-	// TODO: Always assume transition and use current sensor instead of hard
-	// timeout
-	if (needs_valve_transition(old_mode, md)) {
-		stop_pumps();
-		// TODO: check flow switch
-		update_display();
-		delay(3000);  // TODO: eliminate >1s delays
-		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
-
-		if (md == MODE_SPA) {
-			Serial.println("IN=SPA");
-			//digitalWrite(PIN_VALVE_IN_SPA, HIGH);
-			digitalWrite(PIN_VALVE_IN_SPA, LOW);
-		} else {
-			Serial.println("IN=POOL");
-			//digitalWrite(PIN_VALVE_IN_SPA, LOW);
-			digitalWrite(PIN_VALVE_IN_SPA, HIGH);
-		}
-		if (md == MODE_SPA || md == MODE_SPILL) {
-			Serial.println("OUT=SPA");
-			//digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
-			digitalWrite(PIN_VALVE_OUT_SPA, LOW);
-		} else {
-			Serial.println("OUT=POOL");
-			//digitalWrite(PIN_VALVE_OUT_SPA, LOW);
-			digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
-
-		}
-		last_mode_change = millis();
+	
+	stop_pumps();
+	lcd.clear();
+	lcd.write("Stopping...");
+	delay(3000);
+	if (md == MODE_SPA) {
+		Serial.println("IN=SPA");
+		//digitalWrite(PIN_VALVE_IN_SPA, HIGH);
+		digitalWrite(PIN_VALVE_IN_SPA, LOW);
+	} else {
+		Serial.println("IN=POOL");
+		//digitalWrite(PIN_VALVE_IN_SPA, LOW);
+		digitalWrite(PIN_VALVE_IN_SPA, HIGH);
 	}
+	if (md == MODE_SPA || md == MODE_SPILL) {
+		Serial.println("OUT=SPA");
+		//digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+		digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+	} else {
+		Serial.println("OUT=POOL");
+		//digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+		digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+
+	}
+	valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
+	last_mode_change = millis();
 
 	unsigned long safe_time = millis() + (1000l * 60l * DEFAULT_DURATION_M * 4);
 
@@ -149,38 +145,28 @@ void set_mode(t_mode md) {
 			schedule_until = safe_time;
 		valves_moving_until = max(valves_moving_until, millis());
 	}
+	lcd.clear();
 }
 
 void complete_mode_transition() {
 	if (valves_moving_until == 0)
 		return;
-	
-
+		
 	if (valves_moving_until > millis()) {
-		// TODO: sample current several times and take max(abs())
-		valve_current = abs(map(
-			analogRead(PIN_VALVE_CURRENT), 
-			0, CURRENT_MAX, -CURRENT_MAX_MA, CURRENT_MAX_MA));
-		if (valve_current > 1000)
-			last_valve_current = millis();
-		if (/*millis() - last_valve_current < MIN_VALVE_MOVE_TIME_MS ||*/ (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
-			Serial.println("Have valve current: " + String(valve_current) + "mA " + String((valves_moving_until - millis())/1000l) + "s / " + String((MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)/1000l) + "s");
-			return;
-		}
+		return;
 	}
 
 	valves_moving_until = 0;
 	set_speed(speed);
 	lcd.clear();
-	update_display();
 	if (mode == MODE_CLEAN) {
-		// TODO: check flow switch?
-		delay(10000);  // TODO: eliminate >1s delays
+		lcd.write("Starting cleaner...");
+		delay(10000);
 		start_cleaner();
 	}
 	if (mode == MODE_SPA) {
-		// TODO: check flow switch?
-		delay(10000);  // TODO: eliminate >1s delays
+		lcd.write("Starting heater...");
+		delay(10000);
 		start_heater();
 	}
 	lcd.clear();
