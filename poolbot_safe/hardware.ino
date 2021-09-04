@@ -6,7 +6,7 @@ bool start_cleaner() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving_until != 0 || (mode != MODE_POOL && mode != MODE_CLEAN)) {
+	if (valves_moving() || (mode != MODE_POOL && mode != MODE_CLEAN)) {
 		stop_cleaner();
 		return false;
 	}
@@ -32,7 +32,7 @@ bool start_heater() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving_until != 0 || mode != MODE_SPA) {
+	if (valves_moving() || mode != MODE_SPA) {
 		stop_heater();
 		return false;
 	}
@@ -59,6 +59,16 @@ void stop_pumps() {
 	stopped = true;
 	digitalWrite(PIN_PUMP_STOP, LOW);
 	last_mode_change = millis();
+
+	lcd.clear();
+	unsigned long now = millis();
+	while (has_flow() && poll_buttons() == 0) {
+		lcd.setCursor(0, 0);
+		lcd.print("Stopping...(" + String((millis() - now) / 1000l) + "s)");
+		Serial.println("Stopping...(" + String((millis() - now) / 1000l) + "s)");
+		delay(IFACE_MS);
+	}
+	lcd.clear();
 }
 
 void unstop_pump() {
@@ -66,6 +76,15 @@ void unstop_pump() {
 	if (speed != SPEED_OFF) {
 		stopped = false;
 		digitalWrite(PIN_PUMP_STOP, HIGH);
+		lcd.clear();
+		unsigned long now = millis();
+		while (!has_flow() && poll_buttons() == 0) {
+			lcd.setCursor(0, 0);
+			lcd.print("Starting...(" + String((millis() - now) / 1000l) + "s)");
+			Serial.println("Starting...(" + String((millis() - now) / 1000l) + "s)");
+			delay(IFACE_MS);
+		}
+		lcd.clear();
 	} else {
 		Serial.println("(speed=OFF)");
 	}
@@ -120,20 +139,13 @@ void set_mode(t_mode md) {
 		valves_moving_until = max(valves_moving_until, millis());
 	}
 
-	if (old_mode == md) {
+	if (old_mode == md && !valves_moving()) {
 		complete_mode_transition();
 		return;
 	}
 
 	if (needs_valve_transition(old_mode, md)) {
 		stop_pumps();
-		lcd.clear();
-		unsigned long now = millis();
-		while (has_flow()) {
-			lcd.setCursor(0, 0);
-			lcd.println("Stopping...(" + String((millis() - now) / 1000l) + "s)");
-			delay(IFACE_MS);
-		}
 
 		if (md == MODE_SPA) {
 			Serial.println("IN=SPA");
@@ -166,7 +178,10 @@ void complete_mode_transition() {
 		return;
 		
 	if (valves_moving_until > millis()) {
-		return;
+		if (valves_moving() || (valves_moving_until - millis()) > (MAX_VALVE_MOVE_TIME_MS - MIN_VALVE_MOVE_TIME_MS)) {
+			Serial.println("Waiting " + String((valves_moving_until - millis()) / 1000l) + "s to valve transition");
+			return;
+		}
 	}
 
 	valves_moving_until = 0;
@@ -176,21 +191,13 @@ void complete_mode_transition() {
 	lcd.setCursor(0, 0);
 	if (mode == MODE_CLEAN) {
 		lcd.print("Starting cleaner...");
-		while (!has_flow()) {
-			lcd.setCursor(0, 1);
-			lcd.print("Starting pump (" + String((millis() - now) / 1000l) + "s)  ");
-			delay(IFACE_MS);
-		}
-		start_cleaner();
+		if (has_flow())
+			start_cleaner();
 	}
 	if (mode == MODE_SPA) {
 		lcd.print("Starting heater...");
-		while (!has_flow()) {
-			lcd.setCursor(0, 1);
-			lcd.print("Starting pump (" + String((millis() - now) / 1000l) + "s)");
-			delay(IFACE_MS);
-		}
-		start_heater();
+		if (has_flow())
+			start_heater();
 	}
 	lcd.clear();
 }
@@ -226,14 +233,28 @@ void set_speed(t_speed spd) {
 
 int read_valve_current() {
 	int current = 0;
-	for (int i = 0; i < 3; i++) {
-		current = max(current, abs(analogRead(PIN_VALVE_CURRENT)));
-		Serial.println("Read current " + String(current));
+	int new_raw_current;
+	int new_current;
+	for (int i = 0; i < 5; i++) {
+		new_raw_current = analogRead(PIN_VALVE_CURRENT);
+		new_current = map(new_raw_current, CURRENT_ZERO, CURRENT_MAX, 0, CURRENT_MAX_MA);
+		current = max(current, abs(new_current));
+		if (current > VALVE_CURRENT_MOVING_MA) {
+			Serial.println("Read current " + String(new_raw_current) + " -> " + String(new_current));
+			return current;
+		}
+		delay(1);
 	}
-	// TODO: map current to mA
+	Serial.println("Read current " + String(new_raw_current) + " -> " + String(new_current));
 	return current;
 }
 
+bool valves_moving() {
+	return read_valve_current() > VALVE_CURRENT_MOVING_MA;
+}
+
 bool has_flow() {
-	return digitalRead(PIN_FLOW_SWITCH) == LOW;
+	bool flow = digitalRead(PIN_FLOW_SWITCH) == LOW;
+	Serial.println("flow=" + String(flow));
+	return flow;
 }

@@ -283,8 +283,8 @@ void update_display() {
 	time_left = valves_moving_until/1000l - millis()/1000l;
 	if (valves_moving_until > millis()) {
 		sprintf(buf, 
-			"Moving (%ds)\0",
-			time_left);
+			"Moving (%ds/%6dmA)\0",
+			time_left, read_valve_current());
 		lcd.print(buf);
 	}
 }
@@ -299,7 +299,8 @@ void diagnostics() {
 		int valve_current = read_valve_current();
 		bool flow = has_flow();
 		lcd.setCursor(0, 2);
-		sprintf(buf, "vlv %4d flo %2d ", valve_current, flow);
+		sprintf(buf, "vlv %4d flo %2d \0", valve_current, flow);
+		lcd.print(buf);
 		delay(IFACE_MS);
 	}
 }

@@ -5,7 +5,7 @@ DS3231 clock;
 t_mode mode = MODE_UNKNOWN;
 t_speed speed = SPEED_OFF;
 
-unsigned long valves_moving_until = millis() + MIN_VALVE_MOVE_TIME_MS;  // TODO: Remove
+unsigned long valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 unsigned long last_mode_change = 0;
 unsigned long last_button_press = 0;
 unsigned long schedule_until = millis();

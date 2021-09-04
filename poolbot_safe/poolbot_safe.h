@@ -10,9 +10,13 @@
 #define BACKLIGHT_TIMEOUT_MS 45000l
 #define DEFAULT_DURATION_M 60l
 
-#define MAX_VALVE_MOVE_TIME_MS 40000l // TODO: remove
-#define MIN_VALVE_MOVE_TIME_MS 35000l
+#define MAX_VALVE_MOVE_TIME_MS 40000l
+#define MIN_VALVE_MOVE_TIME_MS 5000l
 
+#define CURRENT_MAX 1024l
+#define CURRENT_MAX_MA 30000l
+#define CURRENT_ZERO 525l
+#define VALVE_CURRENT_MOVING_MA 200
 
 #define PIN_FLOW_SWITCH 9
 #define PIN_VALVE_CURRENT A1
@@ -85,6 +89,7 @@ bool needs_valve_transition(t_mode from_mode, t_mode to_mode);
 bool start_cleaner();
 bool start_heater();
 int read_valve_current();
+bool valves_moving();
 bool has_flow();
 
 // TODO: helper function to handle millis() rollover

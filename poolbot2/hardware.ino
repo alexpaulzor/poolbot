@@ -6,7 +6,7 @@ bool start_cleaner() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving_until != 0 || (mode != MODE_POOL && mode != MODE_CLEAN)) {
+	if (valves_moving() || (mode != MODE_POOL && mode != MODE_CLEAN)) {
 		stop_cleaner();
 		return false;
 	}
@@ -32,7 +32,7 @@ bool start_heater() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving_until != 0 || mode != MODE_SPA) {
+	if (valves_moving() || mode != MODE_SPA) {
 		stop_heater();
 		return false;
 	}
