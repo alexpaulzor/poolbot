@@ -61,6 +61,7 @@ void stop_pumps() {
 
 	lcd.clear();
 	unsigned long now = millis();
+	wait_button_release();
 	while (has_flow() && poll_buttons() == 0) {
 		lcd.setCursor(0, 0);
 		lcd.print("Stopping...(" + String((millis() - now) / 1000l) + "s)");
@@ -77,6 +78,7 @@ void unstop_pump() {
 		digitalWrite(PIN_PUMP_STOP, HIGH);
 		lcd.clear();
 		unsigned long now = millis();
+		wait_button_release();
 		while (!has_flow() && poll_buttons() == 0) {
 			lcd.setCursor(0, 0);
 			lcd.print("Starting...(" + String((millis() - now) / 1000l) + "s)");
@@ -86,6 +88,7 @@ void unstop_pump() {
 		lcd.clear();
 	} else {
 		Serial.println("(speed=OFF)");
+		stop_pumps();
 	}
 }
 
@@ -122,21 +125,21 @@ void set_mode(t_mode md) {
 	if (old_mode != md) {
 		last_mode_change = millis();
 	}
+
+	unsigned long min_time = millis() + (1000l * 60l * DEFAULT_DURATION_M);
 	unsigned long safe_time = millis() + (1000l * 60l * DEFAULT_DURATION_M * 4);
+
+	schedule_until = max(min_time, min(safe_time, schedule_until));
 
 	if (md == MODE_SPA) {
 		set_speed(SPEED_MAX);
-		if (schedule_until > safe_time)
-			schedule_until = safe_time;
 	}
 	if (md == MODE_SPILL)
 		set_speed(SPEED_MIN);
-	//if (md == MODE_POOL)
-	//	set_speed(SPEED_LOW);
+	if (md == MODE_POOL)
+		set_speed(SPEED_HI);
 	if (md == MODE_CLEAN) {
 		set_speed(SPEED_HI);
-		if (schedule_until > safe_time)
-			schedule_until = safe_time;
 	}
 
 	if (needs_valve_transition(old_mode, md)) {
@@ -164,7 +167,7 @@ void set_mode(t_mode md) {
 		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 		
 	} else {
-		valves_moving_until = max(valves_moving_until, millis());
+		valves_moving_until = max(valves_moving_until, 1l);
 	}
 	last_mode_change = millis();
 	complete_mode_transition();
@@ -196,8 +199,10 @@ void set_speed(t_speed spd) {
 	NB: Pump refuses to obey SPEED_HI -> SPEED_MAX transition.
 	    All other transitions appear to work ok.
 	*/
-	if (spd == SPEED_MAX && speed == SPEED_HI)
-		set_speed(SPEED_LOW);
+	if (spd == SPEED_MAX && speed == SPEED_HI) {
+		stop_pumps();
+		valves_moving_until = max(valves_moving_until, millis());
+	}
 	Serial.println("set_speed " + String(spd) + " (from " + String(speed) + ")");
 	speed = spd;
 	
