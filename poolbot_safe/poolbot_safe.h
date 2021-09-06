@@ -73,6 +73,7 @@ char * get_mode_str(t_mode md);
 char * get_speed_str(t_speed spd);
 byte poll_buttons();
 void update_display();
+void wait_screen(char *msg, long timeout_ms);
 
 /* SCHEDULE */
 void complete_schedule_item();
@@ -91,6 +92,7 @@ bool start_heater();
 int read_valve_current();
 bool valves_moving();
 bool has_flow();
+void transition_valves(t_mode md);
 
 // TODO: helper function to handle millis() rollover
 

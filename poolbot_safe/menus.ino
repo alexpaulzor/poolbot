@@ -225,13 +225,15 @@ void update_display() {
 	char buf[21];
 
 	lcd.setCursor(0, 0);
-	if (cleaner_on) {
+	if (valves_moving_until > millis() || valves_moving()) {
+		lcd.print("MOVING \0");
+	} else if (stopped) {
+		lcd.print("STOPPED\0");
+	} else if (cleaner_on) {
 		lcd.print("CLEANER\0");
 	} else if (heat_on) {
 		lcd.print("HEATER \0");
-	} else if (stopped) {
-		lcd.print("STOPPED\0");
-	} else {
+	} else  {
 		lcd.print("       \0");
 	}
 
@@ -261,32 +263,45 @@ void update_display() {
 	lcd.print(get_speed_str(speed));
 
 	lcd.print(" ");
-	int time_left = schedule_until/1000l - millis()/1000l;
-	int time_in_mode = (millis()/1000l - last_mode_change/1000l);
+	int time_left_m = schedule_until/1000l/60l - millis()/1000l/60l;
+	int time_in_mode_s = (millis()/1000 - last_mode_change/1000);
 	char time_in_mode_str[4];
 
-	if (time_in_mode < 60) 
-		sprintf(time_in_mode_str, "%2ds\0", time_in_mode);
-	else if (time_in_mode < 60*60)
-		sprintf(time_in_mode_str, "%2dm\0", time_in_mode / 60);
+	if (time_in_mode_s < 60l) 
+		sprintf(time_in_mode_str, "%2ds\0", time_in_mode_s);
+	else if (time_in_mode_s < 60l*60l)
+		sprintf(time_in_mode_str, "%2dm\0", time_in_mode_s / 60l);
 	else
-		sprintf(time_in_mode_str, "%2dh\0", time_in_mode / 60 / 60);
+		sprintf(time_in_mode_str, "%2dh\0", time_in_mode_s / 60l / 60l);
 
 	sprintf(
 		buf, "%02d:%02d %3s\0", 
-		time_left / 60 / 60,
-		time_left / 60 % 60,
+		time_left_m / 60,
+		time_left_m % 60,
 		time_in_mode_str);
 	lcd.print(buf);
 
 	lcd.setCursor(0, 3);
-	time_left = valves_moving_until/1000l - millis()/1000l;
+	time_in_mode_s = valves_moving_until/1000l - millis()/1000l;
 	if (valves_moving_until > millis()) {
 		sprintf(buf, 
 			"Moving (%ds/%6dmA)\0",
-			time_left, read_valve_current());
+			time_in_mode_s, read_valve_current());
 		lcd.print(buf);
 	}
+}
+
+void wait_screen(char *msg, long timeout_ms) {
+	lcd.clear();
+	unsigned long now = millis();
+	wait_button_release();
+	while (poll_buttons() == 0 && millis() < now + timeout_ms) {
+		lcd.setCursor(0, 0);
+		lcd.print(String(msg) + " (" + String((now + timeout_ms - millis()) / 1000l) + "s)     ");
+		Serial.println(String(msg) + " (" + String((now + timeout_ms - millis()) / 1000l) + "s)");
+		delay(IFACE_MS);
+	}
+	lcd.clear();
 }
 
 

@@ -6,11 +6,11 @@ bool start_cleaner() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving() || (mode != MODE_POOL && mode != MODE_CLEAN)) {
+	if (stopped || valves_moving() || (mode != MODE_POOL && mode != MODE_CLEAN)) {
 		stop_cleaner();
 		return false;
 	}
-	if (speed != SPEED_MAX && speed != SPEED_HI) {
+	if (!has_flow()) {
 		stop_cleaner();
 		return false;
 	}
@@ -32,11 +32,7 @@ bool start_heater() {
 		* Pump unstopped
 		* Flow detected
 	*/
-	if (valves_moving() || mode != MODE_SPA) {
-		stop_heater();
-		return false;
-	}
-	if (speed != SPEED_MAX && speed != SPEED_HI) {
+	if (stopped || valves_moving() || mode != MODE_SPA || !has_flow()) {
 		stop_heater();
 		return false;
 	}
@@ -143,29 +139,7 @@ void set_mode(t_mode md) {
 	}
 
 	if (needs_valve_transition(old_mode, md)) {
-		stop_pumps();
-
-		if (md == MODE_SPA) {
-			Serial.println("IN=SPA");
-			//digitalWrite(PIN_VALVE_IN_SPA, HIGH);
-			digitalWrite(PIN_VALVE_IN_SPA, LOW);
-		} else {
-			Serial.println("IN=POOL");
-			//digitalWrite(PIN_VALVE_IN_SPA, LOW);
-			digitalWrite(PIN_VALVE_IN_SPA, HIGH);
-		}
-		if (md == MODE_SPA || md == MODE_SPILL) {
-			Serial.println("OUT=SPA");
-			//digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
-			digitalWrite(PIN_VALVE_OUT_SPA, LOW);
-		} else {
-			Serial.println("OUT=POOL");
-			//digitalWrite(PIN_VALVE_OUT_SPA, LOW);
-			digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
-
-		}
-		valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
-		
+		transition_valves(md);
 	} else {
 		valves_moving_until = max(valves_moving_until, 1l);
 	}
@@ -173,6 +147,31 @@ void set_mode(t_mode md) {
 	complete_mode_transition();
 
 	lcd.clear();
+}
+
+void transition_valves(t_mode md) {
+	stop_pumps();
+
+	if (md == MODE_SPA) {
+		Serial.println("IN=SPA");
+		//digitalWrite(PIN_VALVE_IN_SPA, HIGH);
+		digitalWrite(PIN_VALVE_IN_SPA, LOW);
+	} else {
+		Serial.println("IN=POOL");
+		//digitalWrite(PIN_VALVE_IN_SPA, LOW);
+		digitalWrite(PIN_VALVE_IN_SPA, HIGH);
+	}
+	if (md == MODE_SPA || md == MODE_SPILL) {
+		Serial.println("OUT=SPA");
+		//digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+		digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+	} else {
+		Serial.println("OUT=POOL");
+		//digitalWrite(PIN_VALVE_OUT_SPA, LOW);
+		digitalWrite(PIN_VALVE_OUT_SPA, HIGH);
+
+	}
+	valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 }
 
 void complete_mode_transition() {
@@ -186,25 +185,26 @@ void complete_mode_transition() {
 		valves_moving_until = 0;
 		set_speed(speed);
 	}
-	if (mode == MODE_CLEAN && !cleaner_on && has_flow()) {
-		start_cleaner();
+	if (mode == MODE_CLEAN) {
+		if (!cleaner_on && has_flow()) {
+			start_cleaner();
+		}
+	} else {
+		stop_cleaner();
 	}
-	if (mode == MODE_SPA && !heat_on && has_flow()) {
-		start_heater();
+	if (mode == MODE_SPA) {
+		if (!heat_on && has_flow()) {
+			start_heater();
+		}
+	} else {
+		stop_heater();
 	}
 }
 
-void set_speed(t_speed spd) {
-	/* 
-	NB: Pump refuses to obey SPEED_HI -> SPEED_MAX transition.
-	    All other transitions appear to work ok.
-	*/
-	if (spd == SPEED_MAX && speed == SPEED_HI) {
-		stop_pumps();
-		valves_moving_until = max(valves_moving_until, millis());
-	}
-	Serial.println("set_speed " + String(spd) + " (from " + String(speed) + ")");
-	speed = spd;
+void set_speed(t_speed new_speed) {
+	t_speed old_speed = speed;
+	Serial.println("set_speed " + String(new_speed) + " (from " + String(speed) + ")");
+	speed = new_speed;
 	
 	if (speed == SPEED_LOW || speed == SPEED_MAX) {
 		Serial.println("SPD1=HIGH");
@@ -219,15 +219,25 @@ void set_speed(t_speed spd) {
 	} else {
 		Serial.println("SPD2=LOW");
 		digitalWrite(PIN_PUMP_SPEED_STEP_2, LOW);
-		stop_cleaner();
-		stop_heater();
-		if (mode == MODE_CLEAN)
-			set_mode(MODE_POOL);
 	}
-	if (valves_moving_until != 0 || spd == SPEED_OFF) {
+	if (valves_moving_until != 0 || new_speed == SPEED_OFF) {
 		stop_pumps();
 	} else {
 		unstop_pump();
+	}
+	/* 
+	NB: Pump refuses to obey SPEED_HI -> SPEED_MAX transition.
+	             (SPD1=LOW,SPD2=HIGH) -> (SPD1=HIGH,SPD2=HIGH)
+	    All other transitions appear to work ok.
+	    As a workaround, set speed to LOW (SPD1=HIGH,SPD2=LOW)
+	    for 5s, then back to MAX.
+	*/
+	if (new_speed == SPEED_MAX && old_speed == SPEED_HI) {
+		Serial.println("(HI->MAX workaround) SPD2=LOW");
+		digitalWrite(PIN_PUMP_SPEED_STEP_2, LOW);
+		wait_screen("Turbo charging\0", MIN_VALVE_MOVE_TIME_MS);
+		Serial.println("(HI->MAX workaround) SPD2=HIGH");
+		digitalWrite(PIN_PUMP_SPEED_STEP_2, HIGH);
 	}
 }
 
