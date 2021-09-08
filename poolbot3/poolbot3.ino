@@ -9,11 +9,11 @@ unsigned long valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
 unsigned long last_mode_change = 0;
 unsigned long last_button_press = 0;
 unsigned long schedule_until = millis();
-// int valve_current = 0;
-// unsigned long last_valve_current = 0;
 bool heat_on = false;
 bool cleaner_on = false;
 bool stopped = true;
+t_schedule_item schedule[SCHED_SLOTS];
+int current_schedule_item_idx = 0;
 
 void setup() {
 	Serial.begin(9600);
@@ -56,6 +56,8 @@ void setup() {
 	set_speed(SPEED_OFF);
 	set_mode(MODE_POOL);
 	schedule_until = millis();
+	reset_to_defaults();
+	// load_schedule();
 	update_display();
 	lcd.backlight();
 	Serial.println("setup() complete");

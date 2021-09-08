@@ -2,24 +2,54 @@
 
 void complete_schedule_item() {
 	// Due to rollover nonsense, we have to check for overflow
-	long time_since = millis() - schedule_until;
+	/*long time_since = millis() - schedule_until;
 	long time_until = schedule_until - millis();
 	if (abs(time_since + time_until) > 2) {
 		Serial.println("Resetting schedule_until from " + String(schedule_until) + " since=" + String(time_since) + " until=" + String(time_until));
 		schedule_until = min(schedule_until, millis());
 
-	}
+	}*/
 	if (schedule_until > millis())
 		return;
 	Serial.println("schedule_until=" + String(schedule_until) + " reached");
 	
-
-	set_speed(SPEED_OFF);
-	schedule_until = millis() + (1000l * 60l * DEFAULT_DURATION_M);
-	Serial.println("No schedule. Sleeping 1h.");
+	// TODO: get next schedule item
+	int now_m = get_now_m();
+	int next_idx = get_next_schedule_item_idx(
+		current_schedule_item_idx, now_m);
+	if (next_idx >= 0 && schedule[next_idx].start_time_m != schedule[next_idx].end_time_m) {
+		Serial.println("Enqueueing schedule item " + String(next_idx));
+		if (now_m >= schedule[next_idx].start_time_m && now_m < schedule[next_idx].end_time_m) {
+			// active now
+			activate_schedule_item(next_idx);
+		} else {
+			// wait until next item
+			int minutes_until = schedule[next_idx].start_time_m - now_m;
+			if (minutes_until < 0)
+				minutes_until += DAY_M;
+			Serial.println("Waiting " + String(minutes_until) "m until schedule item " + String(next_idx));
+			set_speed(SPEED_OFF);
+			schedule_until = millis() + minutes_until * 1000l * 60l;
+		}
+	} else {
+		Serial.println("No schedule. Sleeping 1h.");
+		set_speed(SPEED_OFF);
+		schedule_until = millis() + (1000l * 60l * DEFAULT_DURATION_M);
+	}
 	Serial.println("schedule_until=" + String(schedule_until));
 	
 	lcd.clear();
+}
+
+void activate_schedule_item(int idx) {
+	current_schedule_item_idx = idx;
+	int minutes_until = schedule[next_idx].end_time_m - now_m;
+	if (minutes_until < 0)
+		minutes_until = 0;
+	Serial.println("Activating sched item " + String(idx) + " for " + String(minutes_until) "m");
+	set_speed(nibble_to_speed(schedule[idx].mode_speed));
+	set_mode(nibble_to_mode(schedule[idx].mode_speed));
+	schedule_until = millis() + minutes_until * 1000l * 60l;
 }
 
 byte mode_to_nibble(t_mode md) {
@@ -131,8 +161,28 @@ int get_next_schedule_item_idx(int current_idx, int now_m) {
 		int idx = (current_idx + di) % SCHED_SLOTS;
 		// Schedule is sorted on save, so it should be safe to be stupid
 		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
-			return idx;
+			if (schedule[idx].end_time_m > now_m)
+				return idx;
 		}
 	}
-	return -1;
+	// No later items today, let's try for tomorrow
+	for (int di = 1; di <= SCHED_SLOTS; di++) {
+		int idx = (current_idx + di) % SCHED_SLOTS;
+		// Schedule is sorted on save, so it should be safe to be stupid
+		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
+			if (schedule[idx].end_time_m + DAY_M > now_m)
+				return idx;
+		}
+	}
+	return current_idx;
+}
+
+int get_now_m() {
+	bool am_pm_enabled;
+	bool pm_time;
+
+	byte hour = clock.getHour(am_pm_enabled, pm_time) % 24;
+	byte minute = clock.getMinute() % 60;
+
+	return hour * 60 + minute;
 }

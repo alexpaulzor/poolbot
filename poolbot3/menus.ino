@@ -62,14 +62,212 @@ void menu_set_time() {
 	schedule_until = millis();
 }
 
-// void sprintf_duration(char *buf, t_schedule_item item) {
-// 	if ((item.duration_5m * 5) % 60 == 0)
-// 		sprintf(buf, "%2dh\0", item.duration_5m * 5 / 60);
-// 	else if (item.duration_5m * 5 < 100)
-// 		sprintf(buf, "%2dm\0", item.duration_5m * 5);
-// 	else
-// 		sprintf(buf, "%3d\0", item.duration_5m * 5);
-// }
+void sprintf_duration(char *buf, t_schedule_item item) {
+	int duration_m = item.end_time_m - item.start_time_m;
+	if (duration_m % 60 == 0)
+		sprintf(buf, "%2dh\0", duration_m / 60);
+	else if (duration_m * 5 < 100)
+		sprintf(buf, "%2dm\0", duration_m);
+	else
+		sprintf(buf, "%3d\0", duration_m);
+}
+
+void schedule_row_to_buf(char *buf, t_schedule_item item) {
+	/*  0                    e
+		MODE5 SPD hh:mm->hh:mm
+	*/
+	if (item.start_time_m == item.end_time_m) {
+		sprintf(buf, "OFF\0");
+		return;
+	}
+	char duration_str[4];
+	sprintf_duration(duration_str, item);
+	sprintf(
+		buf, 
+		"%5s %3s %02d:%02d %3s\0",
+		get_mode_str(nibble_to_mode(item.mode_speed)),
+		get_speed_str(nibble_to_speed(item.mode_speed)),
+		item.start_time_m / 60,
+		item.start_time_m % 60,
+		duration_str);
+}
+
+void menu_edit_schedule_show(byte row_index) {
+	lcd.clear();
+	byte page = row_index / 4;
+	char buf[21];
+	
+	for (int i = 0; i < 4; i++) {
+		lcd.setCursor(1, i);
+		if (page == 0 && i == 0) {
+			lcd.print("Return");
+		} else if (page*4 + i < SCHED_SLOTS) {
+			schedule_row_to_buf(buf, schedule[page*4 + i - 1]);
+			lcd.print(buf);
+
+		}
+	}
+	
+	lcd.setCursor(0, row_index % 4);
+	lcd.print(">");
+}
+
+void menu_edit_schedule() {
+	byte row_index = 1;
+	Serial.println("edit schedule menu");
+	menu_edit_schedule_show(row_index);	
+
+	// wait for no buttons to be pressed
+	byte button_pin = wait_button_release();
+	byte last_button_pin = button_pin;
+	while (row_index != 0) {
+		while (button_pin != PIN_BUTTON_MENU_OK) {
+			if (button_pin == PIN_BUTTON_MENU_DOWN && row_index > 0)
+				row_index--;
+			if (button_pin == PIN_BUTTON_MENU_UP && row_index < SCHED_SLOTS)
+				row_index++;
+			menu_edit_schedule_show(row_index);
+			last_button_pin = button_pin;
+			do {
+				delay(IFACE_MS);
+				button_pin = poll_buttons();
+			} while (button_pin == last_button_pin);
+		}
+		if (row_index > 0)
+			menu_edit_schedule_item(row_index - 1);
+		// wait for no buttons to be pressed
+		button_pin = wait_button_release();
+	}
+	lcd.clear();
+}
+
+void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
+	lcd.clear();
+	
+	lcd.setCursor(1, 0);
+	lcd.print("Set Start");
+
+	char time_str[5];
+	sprintf(time_str, "%02d:%02d\0", 
+		schedule[sched_row].start_time_m / 60,
+		schedule[sched_row].start_time_m % 60);
+	lcd.setCursor(16, 0);
+	lcd.print(time_str);
+
+	lcd.setCursor(1, 1);
+	lcd.print("Set End");
+	sprintf(time_str, "%02d:%02d\0", 
+		(schedule[sched_row].end_time_m / 60) % 60,
+		schedule[sched_row].end_time_m % 60);
+	lcd.setCursor(15, 1);
+	lcd.print(time_str);
+
+	lcd.setCursor(0, 3);
+	char buf[21];
+	schedule_row_to_buf(buf, schedule[sched_row]);
+	lcd.print(buf);
+
+	lcd.setCursor(0, row_index % 4);
+	lcd.print(">");
+}
+
+short menu_edit_schedule_item_handle_button(byte sched_row, byte button_pin) {
+	t_mode md = nibble_to_mode(schedule[sched_row].mode_speed);
+	t_speed spd = nibble_to_speed(schedule[sched_row].mode_speed);
+	switch (button_pin) {
+		case PIN_BUTTON_MENU_DOWN:
+			return -1;
+			break;
+		case PIN_BUTTON_MENU_OK:
+			return 0;
+			break;
+		case PIN_BUTTON_MENU_UP:
+			return 1;
+			break;
+		
+		case PIN_BUTTON_MODE_SPA:
+			md = MODE_SPA;
+			break;
+		case PIN_BUTTON_MODE_SPILL:
+			md = MODE_SPILL;
+			break;
+		case PIN_BUTTON_MODE_POOL:
+			md = MODE_POOL;
+			break;
+		case PIN_BUTTON_MODE_CLEAN:
+			md = MODE_CLEAN;
+			break;
+
+		case PIN_BUTTON_SPEED_OFF:
+			spd = SPEED_OFF;
+			break;
+		case PIN_BUTTON_SPEED_MIN:
+			spd = SPEED_MIN;
+			break;
+		case PIN_BUTTON_SPEED_LOW:
+			spd = SPEED_LOW;
+			break;
+		case PIN_BUTTON_SPEED_HI:
+			spd = SPEED_HI;
+			break;
+		case PIN_BUTTON_SPEED_MAX:
+			spd = SPEED_MAX;
+			break;
+		
+		default:
+			break;
+	}
+	set_schedule_item(
+		schedule[sched_row], 
+		schedule[sched_row].start_time_m, 
+		schedule[sched_row].end_time_m,
+		md, spd);
+	return 0;
+}
+
+void menu_edit_schedule_item(byte sched_row) {
+	Serial.println("menu_edit_schedule_item " + String(sched_row));
+	byte row_index = 0;
+	menu_edit_schedule_item_show(sched_row, row_index);
+	byte button_pin = wait_button_release();
+	while (button_pin != PIN_BUTTON_MENU_OK) {
+		short dt = menu_edit_schedule_item_handle_button(sched_row, button_pin);
+		int start_time = schedule[sched_row].start_time_m + dt * 5;
+		if (start_time > 24 * 60) start_time -= 24 * 60;
+		if (start_time < 0) start_time += 24 * 60;
+		schedule[sched_row].start_time_m = start_time;
+
+		menu_edit_schedule_item_show(sched_row, row_index);
+		do {
+			delay(IFACE_MS);
+			button_pin = poll_buttons();
+		} while (button_pin == 0);
+	}
+	button_pin = wait_button_release();
+	row_index = 1;
+	while (button_pin != PIN_BUTTON_MENU_OK) {
+		short dt = menu_edit_schedule_item_handle_button(sched_row, button_pin);
+		int end_time = schedule[sched_row].end_time_m + dt * 5;
+			if (end_time < schedule[sched_row].start_time_m) 
+				end_time = schedule[sched_row].start_time_m;
+			schedule[sched_row].end_time_m = end_time;
+
+		menu_edit_schedule_item_show(sched_row, row_index);
+		do {
+			delay(IFACE_MS);
+			button_pin = poll_buttons();
+		} while (button_pin == 0);
+	}
+	if (schedule[sched_row].start_time_m == schedule[sched_row].end_time_m) {
+		set_schedule_item(
+			schedule[sched_row], 
+			0, 
+			0,
+			MODE_POOL, SPEED_OFF);
+	}
+	save_schedule();
+	load_schedule();
+}
 
 void menu_root_show(byte row_index) {
 	lcd.clear();
@@ -257,7 +455,6 @@ void update_display() {
 	lcd.print(buf);
 
 	lcd.setCursor(0, 1);
-	lcd.print(">");
 	lcd.print(get_mode_str(mode));
 	lcd.print(" ");
 	lcd.print(get_speed_str(speed));
@@ -281,13 +478,29 @@ void update_display() {
 		time_in_mode_str);
 	lcd.print(buf);
 
+	int next_after_m = get_now_m() + time_left_m;
+	int next_schedule_item_idx = get_next_schedule_item_idx(current_schedule_item_idx, next_after_m);
+	if (next_schedule_item_idx >= 0) {
+		schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+		lcd.setCursor(0, 2);
+		lcd.print(buf);
+	}
+
 	lcd.setCursor(0, 3);
 	time_in_mode_s = valves_moving_until/1000l - millis()/1000l;
 	if (valves_moving_until > millis()) {
 		sprintf(buf, 
-			"Moving (%ds/%6dmA)\0",
+			"Moving %ds/%5dmA\0",
 			time_in_mode_s, read_valve_current());
 		lcd.print(buf);
+	} else {
+		next_after_m = schedule[next_schedule_item_idx].end_time_m;
+		next_schedule_item_idx = get_next_schedule_item_idx(next_schedule_item_idx, next_after_m);
+		if (next_schedule_item_idx >= 0) {
+			schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+			lcd.setCursor(0, 3);
+			lcd.print(buf);
+		}
 	}
 }
 

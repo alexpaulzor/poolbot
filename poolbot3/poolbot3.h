@@ -13,6 +13,8 @@
 #define MAX_VALVE_MOVE_TIME_MS 40000l
 #define MIN_VALVE_MOVE_TIME_MS 5000l
 
+#define DAY_M (24*60)
+
 #define CURRENT_MAX 1024l
 #define CURRENT_MAX_MA 30000l
 #define CURRENT_ZERO 525l
@@ -97,7 +99,8 @@ byte speed_to_nibble(t_speed spd);
 t_mode nibble_to_mode(byte nib);
 t_speed nibble_to_speed(byte nib);
 int get_next_schedule_item_idx(int current_idx, int now_m);
-
+int get_now_m();
+void activate_schedule_item(int idx);
 
 /* HARDWARE */
 void set_mode(t_mode md);
