@@ -27,7 +27,7 @@ void complete_schedule_item() {
 			int minutes_until = schedule[next_idx].start_time_m - now_m;
 			if (minutes_until < 0)
 				minutes_until += DAY_M;
-			Serial.println("Waiting " + String(minutes_until) "m until schedule item " + String(next_idx));
+			Serial.println("Waiting " + String(minutes_until) + "m until schedule item " + String(next_idx));
 			set_speed(SPEED_OFF);
 			schedule_until = millis() + minutes_until * 1000l * 60l;
 		}
@@ -43,12 +43,12 @@ void complete_schedule_item() {
 
 void activate_schedule_item(int idx) {
 	current_schedule_item_idx = idx;
-	int minutes_until = schedule[next_idx].end_time_m - now_m;
+	int minutes_until = schedule[idx].end_time_m - get_now_m();
 	if (minutes_until < 0)
 		minutes_until = 0;
-	Serial.println("Activating sched item " + String(idx) + " for " + String(minutes_until) "m");
-	set_speed(nibble_to_speed(schedule[idx].mode_speed));
+	Serial.println("Activating sched item " + String(idx) + " for " + String(minutes_until) + "m");
 	set_mode(nibble_to_mode(schedule[idx].mode_speed));
+	set_speed(nibble_to_speed(schedule[idx].mode_speed));
 	schedule_until = millis() + minutes_until * 1000l * 60l;
 }
 
@@ -105,13 +105,17 @@ void reset_to_defaults() {
 	set_schedule_item(schedule[9], 21*60, 22*60, MODE_CLEAN, SPEED_HI);
 
 	save_schedule();
+	load_schedule();
 }
 
 void sort_schedule() {
 	t_schedule_item orig_schedule[SCHED_SLOTS];
+	char buf[21];
 
 	for (int i = 0; i < SCHED_SLOTS; i++) {
 		orig_schedule[i] = schedule[i];
+		schedule_row_to_buf(buf, orig_schedule[i]);
+		Serial.println("unsorted[" + String(i) + "]=" + buf);
 	}
 
 	/*
@@ -120,6 +124,7 @@ void sort_schedule() {
 	int min_idx = -1;
 	
 	for (int i = 0; i < SCHED_SLOTS; i++) {
+		min_idx = -1;
 		// Find the earliest-starting item still in 
 		// orig_schedule, and assign it to schedule[i],
 		// then unset it in orig_schedule.
@@ -127,8 +132,8 @@ void sort_schedule() {
 			if (orig_schedule[j].start_time_m != orig_schedule[j].end_time_m) {
 				if (min_idx < 0)
 					min_idx = j;
-				else if (orig_schedule[j].start_time_m <= orig_schedule[min_index].start_time_m &&
-						 orig_schedule[j].end_time_m < orig_schedule[min_index].end_time_m)
+				else if (orig_schedule[j].start_time_m <= orig_schedule[min_idx].start_time_m &&
+						 orig_schedule[j].end_time_m < orig_schedule[min_idx].end_time_m)
 					min_idx = j;
 			}
 		}
@@ -140,6 +145,8 @@ void sort_schedule() {
 			// No more non-disabled items.
 			set_schedule_item(schedule[i], 0, 0, MODE_POOL, SPEED_OFF);
 		}
+		schedule_row_to_buf(buf, schedule[i]);
+		Serial.println("sorted[" + String(i) + "]=" + buf);	
 	}
 }
 
@@ -151,9 +158,14 @@ void save_schedule() {
 }
 
 void load_schedule() {
+	stop_pumps();
 	for (int i = 0; i < SCHED_SLOTS; i++) {
 		EEPROM.get(i*SCHED_ITEM_BYTES, schedule[i]);
 	}
+	current_schedule_item_idx = -1;
+	schedule_until = millis();
+	valves_moving_until = millis() + MAX_VALVE_MOVE_TIME_MS;
+	complete_schedule_item();
 }
 
 int get_next_schedule_item_idx(int current_idx, int now_m) {

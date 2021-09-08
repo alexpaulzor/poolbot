@@ -5,6 +5,7 @@
 #include <DS3231.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <EEPROM.h>
 
 #define IFACE_MS 100
 #define BACKLIGHT_TIMEOUT_MS 300000l
@@ -18,7 +19,7 @@
 #define CURRENT_MAX 1024l
 #define CURRENT_MAX_MA 30000l
 #define CURRENT_ZERO 525l
-#define VALVE_CURRENT_MOVING_MA 300
+#define VALVE_CURRENT_MOVING_MA 250
 
 #define PIN_FLOW_SWITCH 9
 #define PIN_VALVE_CURRENT A1
@@ -86,6 +87,7 @@ char * get_speed_str(t_speed spd);
 byte poll_buttons();
 void update_display();
 void wait_screen(char *msg, long timeout_ms);
+void schedule_row_to_buf(char *buf, t_schedule_item item);
 
 /* SCHEDULE */
 void complete_schedule_item();

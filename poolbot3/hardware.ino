@@ -243,7 +243,7 @@ int read_valve_current() {
 	int current = 0;
 	int new_raw_current;
 	int new_current;
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 10; i++) {
 		new_raw_current = analogRead(PIN_VALVE_CURRENT);
 		new_current = map(new_raw_current, CURRENT_ZERO, CURRENT_MAX, 0, CURRENT_MAX_MA);
 		current = max(current, abs(new_current));

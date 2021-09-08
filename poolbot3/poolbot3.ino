@@ -13,7 +13,7 @@ bool heat_on = false;
 bool cleaner_on = false;
 bool stopped = true;
 t_schedule_item schedule[SCHED_SLOTS];
-int current_schedule_item_idx = 0;
+int current_schedule_item_idx = -1;
 
 void setup() {
 	Serial.begin(9600);
@@ -56,8 +56,8 @@ void setup() {
 	set_speed(SPEED_OFF);
 	set_mode(MODE_POOL);
 	schedule_until = millis();
-	reset_to_defaults();
-	// load_schedule();
+	//reset_to_defaults();
+	load_schedule();
 	update_display();
 	lcd.backlight();
 	Serial.println("setup() complete");

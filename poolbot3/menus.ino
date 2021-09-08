@@ -66,7 +66,7 @@ void sprintf_duration(char *buf, t_schedule_item item) {
 	int duration_m = item.end_time_m - item.start_time_m;
 	if (duration_m % 60 == 0)
 		sprintf(buf, "%2dh\0", duration_m / 60);
-	else if (duration_m * 5 < 100)
+	else if (duration_m < 100)
 		sprintf(buf, "%2dm\0", duration_m);
 	else
 		sprintf(buf, "%3d\0", duration_m);
@@ -127,18 +127,15 @@ void menu_edit_schedule() {
 			if (button_pin == PIN_BUTTON_MENU_UP && row_index < SCHED_SLOTS)
 				row_index++;
 			menu_edit_schedule_show(row_index);
-			last_button_pin = button_pin;
 			do {
 				delay(IFACE_MS);
 				button_pin = poll_buttons();
-			} while (button_pin == last_button_pin);
+			} while (button_pin == 0);
 		}
 		if (row_index > 0)
 			menu_edit_schedule_item(row_index - 1);
-		// wait for no buttons to be pressed
-		button_pin = wait_button_release();
 	}
-	lcd.clear();
+	load_schedule();
 }
 
 void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
@@ -151,7 +148,7 @@ void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
 	sprintf(time_str, "%02d:%02d\0", 
 		schedule[sched_row].start_time_m / 60,
 		schedule[sched_row].start_time_m % 60);
-	lcd.setCursor(16, 0);
+	lcd.setCursor(14, 0);
 	lcd.print(time_str);
 
 	lcd.setCursor(1, 1);
@@ -159,8 +156,11 @@ void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
 	sprintf(time_str, "%02d:%02d\0", 
 		(schedule[sched_row].end_time_m / 60) % 60,
 		schedule[sched_row].end_time_m % 60);
-	lcd.setCursor(15, 1);
+	lcd.setCursor(14, 1);
 	lcd.print(time_str);
+
+	lcd.setCursor(0, 2);
+	lcd.print("(use mode/speed)");
 
 	lcd.setCursor(0, 3);
 	char buf[21];
@@ -266,7 +266,6 @@ void menu_edit_schedule_item(byte sched_row) {
 			MODE_POOL, SPEED_OFF);
 	}
 	save_schedule();
-	load_schedule();
 }
 
 void menu_root_show(byte row_index) {
@@ -279,7 +278,10 @@ void menu_root_show(byte row_index) {
 	lcd.print("Set Time");
 
 	lcd.setCursor(1, 2);
-	lcd.print("Diagnostics");
+	lcd.print("Edit Schedule");
+
+	lcd.setCursor(1, 3);
+	lcd.print("Reset to Defaults");
 
 	lcd.setCursor(0, row_index % 4);
 	lcd.print(">");
@@ -297,7 +299,7 @@ void menu_root() {
 	while (button_pin != PIN_BUTTON_MENU_OK) {
 		if (button_pin == PIN_BUTTON_MENU_DOWN && row_index > 0)
 			row_index--;
-		if (button_pin == PIN_BUTTON_MENU_UP && row_index < 2)
+		if (button_pin == PIN_BUTTON_MENU_UP && row_index < 3)
 			row_index++;
 		menu_root_show(row_index);
 		last_button_pin = button_pin;
@@ -315,7 +317,10 @@ void menu_root() {
 		menu_set_time();
 	}
 	if (row_index == 2) {
-		diagnostics();
+		menu_edit_schedule();
+	}
+	if (row_index == 3) {
+		reset_to_defaults();
 	}
 	
 	lcd.clear();
@@ -464,9 +469,9 @@ void update_display() {
 	int time_in_mode_s = (millis()/1000 - last_mode_change/1000);
 	char time_in_mode_str[4];
 
-	if (time_in_mode_s < 60l) 
+	if (time_in_mode_s < 100l) 
 		sprintf(time_in_mode_str, "%2ds\0", time_in_mode_s);
-	else if (time_in_mode_s < 60l*60l)
+	else if (time_in_mode_s < 60l*100l)
 		sprintf(time_in_mode_str, "%2dm\0", time_in_mode_s / 60l);
 	else
 		sprintf(time_in_mode_str, "%2dh\0", time_in_mode_s / 60l / 60l);
