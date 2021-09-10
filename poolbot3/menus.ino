@@ -62,17 +62,23 @@ void menu_set_time() {
 	schedule_until = millis();
 }
 
-void sprintf_duration(char *buf, t_schedule_item item) {
-	int duration_m = item.end_time_m - item.start_time_m;
-	if (duration_m % 60 == 0)
-		sprintf(buf, "%2dh\0", duration_m / 60);
-	else if (duration_m < 100)
-		sprintf(buf, "%2dm\0", duration_m);
-	else
-		sprintf(buf, "%3d\0", duration_m);
+void sprintf_duration(char *buf, t_schedule_item item, bool extra_char=false) {
+	int start_m = item.start_time_m % DAY_M;
+	int end_m = item.end_time_m % DAY_M;
+	int duration_m = abs(end_m - start_m);
+	if (duration_m % 60 == 0 || duration_m >= 100)
+		sprintf(
+			buf, 
+			extra_char ? "%3dh\0" : "%2dh\0", 
+			duration_m / 60);
+	else 
+		sprintf(
+			buf, 
+			extra_char ? "%3dm\0" : "%2dm\0", 
+			duration_m);
 }
 
-void schedule_row_to_buf(char *buf, t_schedule_item item) {
+void schedule_row_to_buf(char *buf, t_schedule_item item, bool extra_char=false) {
 	/*  0                    e
 		MODE5 SPD hh:mm->hh:mm
 	*/
@@ -80,11 +86,13 @@ void schedule_row_to_buf(char *buf, t_schedule_item item) {
 		sprintf(buf, "OFF\0");
 		return;
 	}
-	char duration_str[4];
+	char duration_str[5];
 	sprintf_duration(duration_str, item);
 	sprintf(
 		buf, 
-		"%5s %3s %02d:%02d %3s\0",
+		(extra_char ? 
+			"%5s %3s %02d:%02d %4s\0" : 
+			"%5s %3s %02d:%02d %3s\0"),
 		get_mode_str(nibble_to_mode(item.mode_speed)),
 		get_speed_str(nibble_to_speed(item.mode_speed)),
 		item.start_time_m / 60,
@@ -476,25 +484,25 @@ void update_display() {
 	char time_in_mode_str[5];
 
 	if (time_in_mode_s < 100) 
-		sprintf(time_in_mode_str, "%2ds\0", time_in_mode_s);
+		sprintf(time_in_mode_str, "%3ds\0", time_in_mode_s);
 	else if (time_in_mode_s < 60*100)
-		sprintf(time_in_mode_str, "%2dm\0", time_in_mode_s / 60);
+		sprintf(time_in_mode_str, "%3dm\0", time_in_mode_s / 60);
 	else
-		sprintf(time_in_mode_str, "%2dh\0", time_in_mode_s / 60 / 60);
+		sprintf(time_in_mode_str, "%3fh\0", time_in_mode_s / 60.0 / 60.0);
 
 	sprintf(
-		buf, "%02d:%02d %3s\0", 
+		buf, "%02d:%02d %4s\0", 
 		time_left_m / 60,
 		time_left_m % 60,
 		time_in_mode_str);
 	lcd.print(buf);
 
-	int next_after_m = get_now_m() + time_left_m;
+	int next_after_m = abs(get_now_m() + time_left_m) % DAY_M;
 	int next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
 	if (next_schedule_item_idx >= 0) {
 		t_schedule_item next_item = schedule[next_schedule_item_idx];
 		next_item.start_time_m = max(next_item.start_time_m, next_after_m);
-		schedule_row_to_buf(buf, next_item);
+		schedule_row_to_buf(buf, next_item, true);
 		lcd.setCursor(0, 2);
 		lcd.print(buf);
 	}
@@ -510,7 +518,7 @@ void update_display() {
 		next_after_m = schedule[next_schedule_item_idx].end_time_m;
 		next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
 		if (next_schedule_item_idx >= 0) {
-			schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+			schedule_row_to_buf(buf, schedule[next_schedule_item_idx], true);
 			lcd.setCursor(0, 3);
 			lcd.print(buf);
 		}

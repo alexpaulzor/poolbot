@@ -172,7 +172,7 @@ int get_next_schedule_item_idx(int now_m) {
 	for (int idx = 0; idx < SCHED_SLOTS; idx++) {
 		// Schedule is sorted on save, so it should be safe to be stupid
 		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
-			if (schedule[idx].end_time_m > now_m)
+			if (schedule[idx].end_time_m > now_m % DAY_M)
 				return idx;
 		}
 	}
@@ -180,7 +180,7 @@ int get_next_schedule_item_idx(int now_m) {
 	for (int idx = 0; idx < SCHED_SLOTS; idx++) {
 		// Schedule is sorted on save, so it should be safe to be stupid
 		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
-			if (schedule[idx].end_time_m + DAY_M > now_m)
+			if (schedule[idx].end_time_m + DAY_M > now_m % DAY_M)
 				return idx;
 		}
 	}

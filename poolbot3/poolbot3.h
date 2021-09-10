@@ -8,13 +8,13 @@
 #include <EEPROM.h>
 
 #define IFACE_MS 100
-#define BACKLIGHT_TIMEOUT_MS 300000l
+#define BACKLIGHT_TIMEOUT_MS 300000l  // 5 minutes
 #define DEFAULT_DURATION_M 60l
 
 #define MAX_VALVE_MOVE_TIME_MS 40000l
 #define MIN_VALVE_MOVE_TIME_MS 5000l
 
-#define DAY_M (24*60)
+#define DAY_M 1440l  // 24*60
 
 #define CURRENT_MAX 1024l
 #define CURRENT_MAX_MA 30000l
@@ -87,7 +87,7 @@ char * get_speed_str(t_speed spd);
 byte poll_buttons();
 void update_display();
 void wait_screen(char *msg, long timeout_ms);
-void schedule_row_to_buf(char *buf, t_schedule_item item);
+void schedule_row_to_buf(char *buf, t_schedule_item item, bool extra_char=false);
 
 /* SCHEDULE */
 void complete_schedule_item();
