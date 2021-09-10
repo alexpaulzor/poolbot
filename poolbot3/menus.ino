@@ -288,8 +288,8 @@ void menu_root_show(byte row_index) {
 }
 
 void menu_root() {
-	byte row_index = 1;
-	//byte num_rows = 4;
+	byte row_index = 0;
+	byte num_rows = 4;
 	Serial.println("root menu");
 	menu_root_show(row_index);	
 
@@ -299,7 +299,7 @@ void menu_root() {
 	while (button_pin != PIN_BUTTON_MENU_OK) {
 		if (button_pin == PIN_BUTTON_MENU_DOWN && row_index > 0)
 			row_index--;
-		if (button_pin == PIN_BUTTON_MENU_UP && row_index < 3)
+		if (button_pin == PIN_BUTTON_MENU_UP && row_index < num_rows - 1)
 			row_index++;
 		menu_root_show(row_index);
 		last_button_pin = button_pin;
@@ -425,6 +425,12 @@ char * get_speed_str(t_speed spd) {
 }
 
 void update_display() {
+	int valve_current;
+
+	// Read current up front because it can be slow
+	// and cause the display to appear partially updated
+	if (valves_moving_until > millis()) 
+		valve_current = read_valve_current();
 	char buf[21];
 
 	lcd.setCursor(0, 0);
@@ -465,16 +471,16 @@ void update_display() {
 	lcd.print(get_speed_str(speed));
 
 	lcd.print(" ");
-	int time_left_m = schedule_until/1000l/60l - millis()/1000l/60l;
-	int time_in_mode_s = (millis()/1000 - last_mode_change/1000);
-	char time_in_mode_str[4];
+	int time_left_m = max(schedule_until/1000l/60l - millis()/1000l/60l, 0);
+	int time_in_mode_s = max(millis()/1000l - last_mode_change/1000l, 0);
+	char time_in_mode_str[5];
 
-	if (time_in_mode_s < 100l) 
+	if (time_in_mode_s < 100) 
 		sprintf(time_in_mode_str, "%2ds\0", time_in_mode_s);
-	else if (time_in_mode_s < 60l*100l)
-		sprintf(time_in_mode_str, "%2dm\0", time_in_mode_s / 60l);
+	else if (time_in_mode_s < 60*100)
+		sprintf(time_in_mode_str, "%2dm\0", time_in_mode_s / 60);
 	else
-		sprintf(time_in_mode_str, "%2dh\0", time_in_mode_s / 60l / 60l);
+		sprintf(time_in_mode_str, "%2dh\0", time_in_mode_s / 60 / 60);
 
 	sprintf(
 		buf, "%02d:%02d %3s\0", 
@@ -484,9 +490,11 @@ void update_display() {
 	lcd.print(buf);
 
 	int next_after_m = get_now_m() + time_left_m;
-	int next_schedule_item_idx = get_next_schedule_item_idx(current_schedule_item_idx, next_after_m);
+	int next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
 	if (next_schedule_item_idx >= 0) {
-		schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
+		t_schedule_item next_item = schedule[next_schedule_item_idx];
+		next_item.start_time_m = max(next_item.start_time_m, next_after_m);
+		schedule_row_to_buf(buf, next_item);
 		lcd.setCursor(0, 2);
 		lcd.print(buf);
 	}
@@ -496,11 +504,11 @@ void update_display() {
 	if (valves_moving_until > millis()) {
 		sprintf(buf, 
 			"Moving %ds/%5dmA\0",
-			time_in_mode_s, read_valve_current());
+			time_in_mode_s, valve_current);
 		lcd.print(buf);
-	} else {
+	} else if (next_schedule_item_idx >= 0) {
 		next_after_m = schedule[next_schedule_item_idx].end_time_m;
-		next_schedule_item_idx = get_next_schedule_item_idx(next_schedule_item_idx, next_after_m);
+		next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
 		if (next_schedule_item_idx >= 0) {
 			schedule_row_to_buf(buf, schedule[next_schedule_item_idx]);
 			lcd.setCursor(0, 3);
@@ -520,21 +528,5 @@ void wait_screen(char *msg, long timeout_ms) {
 		delay(IFACE_MS);
 	}
 	lcd.clear();
-}
-
-
-void diagnostics() {
-	char buf[21];
-	lcd.clear();
-	while (poll_buttons() != PIN_BUTTON_MENU_OK) {
-		handle_mode_speed_input();
-		update_display();
-		int valve_current = read_valve_current();
-		bool flow = has_flow();
-		lcd.setCursor(0, 2);
-		sprintf(buf, "vlv %4d flo %2d \0", valve_current, flow);
-		lcd.print(buf);
-		delay(IFACE_MS);
-	}
 }
 

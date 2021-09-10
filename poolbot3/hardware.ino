@@ -125,6 +125,13 @@ void set_mode(t_mode md) {
 
 	schedule_until = max(min_time, min(safe_time, schedule_until));
 
+	if (needs_valve_transition(old_mode, md)) {
+		transition_valves(md);
+	} else {
+		valves_moving_until = max(valves_moving_until, 1l);
+	}
+	last_mode_change = millis();
+
 	if (md == MODE_SPA) {
 		set_speed(SPEED_MAX);
 	}
@@ -136,12 +143,6 @@ void set_mode(t_mode md) {
 		set_speed(SPEED_HI);
 	}
 
-	if (needs_valve_transition(old_mode, md)) {
-		transition_valves(md);
-	} else {
-		valves_moving_until = max(valves_moving_until, 1l);
-	}
-	last_mode_change = millis();
 	complete_mode_transition();
 
 	lcd.clear();

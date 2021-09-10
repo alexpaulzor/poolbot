@@ -100,7 +100,7 @@ byte mode_to_nibble(t_mode md);
 byte speed_to_nibble(t_speed spd);
 t_mode nibble_to_mode(byte nib);
 t_speed nibble_to_speed(byte nib);
-int get_next_schedule_item_idx(int current_idx, int now_m);
+int get_next_schedule_item_idx(int now_m);
 int get_now_m();
 void activate_schedule_item(int idx);
 

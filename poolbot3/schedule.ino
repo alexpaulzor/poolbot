@@ -15,8 +15,7 @@ void complete_schedule_item() {
 	
 	// TODO: get next schedule item
 	int now_m = get_now_m();
-	int next_idx = get_next_schedule_item_idx(
-		current_schedule_item_idx, now_m);
+	int next_idx = get_next_schedule_item_idx(now_m);
 	if (next_idx >= 0 && schedule[next_idx].start_time_m != schedule[next_idx].end_time_m) {
 		Serial.println("Enqueueing schedule item " + String(next_idx));
 		if (now_m >= schedule[next_idx].start_time_m && now_m < schedule[next_idx].end_time_m) {
@@ -168,9 +167,9 @@ void load_schedule() {
 	complete_schedule_item();
 }
 
-int get_next_schedule_item_idx(int current_idx, int now_m) {
-	for (int di = 1; di <= SCHED_SLOTS; di++) {
-		int idx = (current_idx + di) % SCHED_SLOTS;
+int get_next_schedule_item_idx(int now_m) {
+	
+	for (int idx = 0; idx < SCHED_SLOTS; idx++) {
 		// Schedule is sorted on save, so it should be safe to be stupid
 		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
 			if (schedule[idx].end_time_m > now_m)
@@ -178,15 +177,14 @@ int get_next_schedule_item_idx(int current_idx, int now_m) {
 		}
 	}
 	// No later items today, let's try for tomorrow
-	for (int di = 1; di <= SCHED_SLOTS; di++) {
-		int idx = (current_idx + di) % SCHED_SLOTS;
+	for (int idx = 0; idx < SCHED_SLOTS; idx++) {
 		// Schedule is sorted on save, so it should be safe to be stupid
 		if (schedule[idx].start_time_m != schedule[idx].end_time_m) {
 			if (schedule[idx].end_time_m + DAY_M > now_m)
 				return idx;
 		}
 	}
-	return current_idx;
+	return -1;
 }
 
 int get_now_m() {
