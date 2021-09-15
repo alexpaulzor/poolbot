@@ -480,7 +480,8 @@ void update_display() {
 
 	lcd.print(" ");
 	int time_left_m = max(schedule_until/1000l/60l - millis()/1000l/60l, 0);
-	int time_in_mode_s = max(millis()/1000l - last_mode_change/1000l, 0);
+	int time_in_mode_s = millis()/1000l - last_mode_change/1000l;
+	time_in_mode_s = max(time_in_mode_s, 0l);
 	char time_in_mode_str[5];
 
 	if (time_in_mode_s < 100) 
@@ -488,7 +489,7 @@ void update_display() {
 	else if (time_in_mode_s < 60*100)
 		sprintf(time_in_mode_str, "%3dm\0", time_in_mode_s / 60);
 	else
-		sprintf(time_in_mode_str, "%3fh\0", time_in_mode_s / 60.0 / 60.0);
+		sprintf(time_in_mode_str, "%3dh\0", time_in_mode_s / 60 / 60);
 
 	sprintf(
 		buf, "%02d:%02d %4s\0", 
