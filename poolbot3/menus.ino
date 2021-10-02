@@ -140,10 +140,12 @@ void menu_edit_schedule() {
 				button_pin = poll_buttons();
 			} while (button_pin == 0);
 		}
-		if (row_index > 0)
+		if (row_index > 0) {
 			menu_edit_schedule_item(row_index - 1);
+			load_schedule();
+			button_pin = wait_button_release();
+		}
 	}
-	load_schedule();
 }
 
 void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
@@ -499,7 +501,7 @@ void update_display() {
 	lcd.print(buf);
 
 	int next_after_m = abs(get_now_m() + time_left_m) % DAY_M;
-	int next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
+	int next_schedule_item_idx = get_next_schedule_item_idx(next_after_m + 1);
 	if (next_schedule_item_idx >= 0) {
 		t_schedule_item next_item = schedule[next_schedule_item_idx];
 		next_item.start_time_m = max(next_item.start_time_m, next_after_m);
@@ -517,7 +519,7 @@ void update_display() {
 		lcd.print(buf);
 	} else if (next_schedule_item_idx >= 0) {
 		next_after_m = schedule[next_schedule_item_idx].end_time_m;
-		next_schedule_item_idx = get_next_schedule_item_idx(next_after_m);
+		next_schedule_item_idx = get_next_schedule_item_idx(next_after_m + 1);
 		if (next_schedule_item_idx >= 0) {
 			schedule_row_to_buf(buf, schedule[next_schedule_item_idx], true);
 			lcd.setCursor(0, 3);

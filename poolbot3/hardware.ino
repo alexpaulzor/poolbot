@@ -227,15 +227,15 @@ void set_speed(t_speed new_speed) {
 	/* 
 	NB: Pump refuses to obey SPEED_HI -> SPEED_MAX transition.
 	             (SPD1=LOW,SPD2=HIGH) -> (SPD1=HIGH,SPD2=HIGH)
-	    All other transitions appear to work ok.
+	    Some other transitions appear to work ok, but use this:.
 	    As a workaround, set speed to LOW (SPD1=HIGH,SPD2=LOW)
 	    for 5s, then back to MAX.
 	*/
-	if (new_speed == SPEED_MAX && old_speed == SPEED_HI) {
-		Serial.println("(HI->MAX workaround) SPD2=LOW");
+	if (new_speed == SPEED_MAX && old_speed != SPEED_MAX) {
+		Serial.println("(?->MAX workaround) SPD2=LOW");
 		digitalWrite(PIN_PUMP_SPEED_STEP_2, LOW);
 		wait_screen("Turbo charging\0", MIN_VALVE_MOVE_TIME_MS);
-		Serial.println("(HI->MAX workaround) SPD2=HIGH");
+		Serial.println("(?->MAX workaround) SPD2=HIGH");
 		digitalWrite(PIN_PUMP_SPEED_STEP_2, HIGH);
 	}
 }

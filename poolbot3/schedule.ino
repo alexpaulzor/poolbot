@@ -97,10 +97,9 @@ void reset_to_defaults() {
 		set_schedule_item(schedule[i], 0, 0, MODE_POOL, SPEED_OFF);
 	}
 
-	set_schedule_item(schedule[1], 9*60,  10*60, MODE_SPILL, SPEED_LOW);
-	set_schedule_item(schedule[3], 10*60, 11*60, MODE_CLEAN, SPEED_HI);
-	set_schedule_item(schedule[5], 11*60, 15*60, MODE_POOL,  SPEED_HI);
-	set_schedule_item(schedule[7], 15*60, 21*60, MODE_SPILL, SPEED_MIN);
+	set_schedule_item(schedule[1], 9*60,  12*60, MODE_SPILL, SPEED_LOW);
+	set_schedule_item(schedule[5], 12*60, 15*60, MODE_POOL,  SPEED_HI);
+	set_schedule_item(schedule[7], 15*60, 21*60, MODE_SPILL, SPEED_LOW);
 	set_schedule_item(schedule[9], 21*60, 22*60, MODE_CLEAN, SPEED_HI);
 
 	save_schedule();
