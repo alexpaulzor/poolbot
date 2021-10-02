@@ -100,26 +100,6 @@ void schedule_row_to_buf(char *buf, t_schedule_item item, bool extra_char=false)
 		duration_str);
 }
 
-void menu_edit_schedule_show(byte row_index) {
-	lcd.clear();
-	byte page = row_index / 4;
-	char buf[21];
-	
-	for (int i = 0; i < 4; i++) {
-		lcd.setCursor(1, i);
-		if (page == 0 && i == 0) {
-			lcd.print("Return");
-		} else if (page*4 + i < SCHED_SLOTS) {
-			schedule_row_to_buf(buf, schedule[page*4 + i - 1]);
-			lcd.print(buf);
-
-		}
-	}
-	
-	lcd.setCursor(0, row_index % 4);
-	lcd.print(">");
-}
-
 void menu_edit_schedule() {
 	byte row_index = 1;
 	Serial.println("edit schedule menu");
@@ -141,14 +121,34 @@ void menu_edit_schedule() {
 			} while (button_pin == 0);
 		}
 		if (row_index > 0) {
-			menu_edit_schedule_item(row_index - 1);
+			menu_edit_schedule_item(schedule[row_index - 1]);
 			load_schedule();
 			button_pin = wait_button_release();
 		}
 	}
 }
 
-void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
+void menu_edit_schedule_show(byte row_index) {
+	lcd.clear();
+	byte page = row_index / 4;
+	char buf[21];
+	
+	for (int i = 0; i < 4; i++) {
+		lcd.setCursor(1, i);
+		if (page == 0 && i == 0) {
+			lcd.print("Return");
+		} else if (page*4 + i < SCHED_SLOTS) {
+			schedule_row_to_buf(buf, schedule[page*4 + i - 1]);
+			lcd.print(buf);
+
+		}
+	}
+	
+	lcd.setCursor(0, row_index % 4);
+	lcd.print(">");
+}
+
+void menu_edit_schedule_item_show(t_schedule_item &item, byte row_index) {
 	lcd.clear();
 	
 	lcd.setCursor(1, 0);
@@ -156,16 +156,16 @@ void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
 
 	char time_str[5];
 	sprintf(time_str, "%02d:%02d\0", 
-		schedule[sched_row].start_time_m / 60,
-		schedule[sched_row].start_time_m % 60);
+		item.start_time_m / 60,
+		item.start_time_m % 60);
 	lcd.setCursor(14, 0);
 	lcd.print(time_str);
 
 	lcd.setCursor(1, 1);
 	lcd.print("Set End");
 	sprintf(time_str, "%02d:%02d\0", 
-		(schedule[sched_row].end_time_m / 60) % 60,
-		schedule[sched_row].end_time_m % 60);
+		(item.end_time_m / 60) % 60,
+		item.end_time_m % 60);
 	lcd.setCursor(14, 1);
 	lcd.print(time_str);
 
@@ -174,16 +174,16 @@ void menu_edit_schedule_item_show(byte sched_row, byte row_index) {
 
 	lcd.setCursor(0, 3);
 	char buf[21];
-	schedule_row_to_buf(buf, schedule[sched_row]);
+	schedule_row_to_buf(buf, item);
 	lcd.print(buf);
 
 	lcd.setCursor(0, row_index % 4);
 	lcd.print(">");
 }
 
-short menu_edit_schedule_item_handle_button(byte sched_row, byte button_pin) {
-	t_mode md = nibble_to_mode(schedule[sched_row].mode_speed);
-	t_speed spd = nibble_to_speed(schedule[sched_row].mode_speed);
+short menu_edit_schedule_item_handle_button(t_schedule_item &item, byte button_pin) {
+	t_mode md = nibble_to_mode(item.mode_speed);
+	t_speed spd = nibble_to_speed(item.mode_speed);
 	switch (button_pin) {
 		case PIN_BUTTON_MENU_DOWN:
 			return -1;
@@ -228,26 +228,28 @@ short menu_edit_schedule_item_handle_button(byte sched_row, byte button_pin) {
 			break;
 	}
 	set_schedule_item(
-		schedule[sched_row], 
-		schedule[sched_row].start_time_m, 
-		schedule[sched_row].end_time_m,
+		item, 
+		item.start_time_m, 
+		item.end_time_m,
 		md, spd);
 	return 0;
 }
 
-void menu_edit_schedule_item(byte sched_row) {
-	Serial.println("menu_edit_schedule_item " + String(sched_row));
+void menu_edit_schedule_item(t_schedule_item &sched_item) {
+	char buf[25];
+	schedule_row_to_buf(buf, sched_item, true);
+	Serial.println("menu_edit_schedule_item " + String(buf));
 	byte row_index = 0;
-	menu_edit_schedule_item_show(sched_row, row_index);
+	menu_edit_schedule_item_show(sched_item, row_index);
 	byte button_pin = wait_button_release();
 	while (button_pin != PIN_BUTTON_MENU_OK) {
-		short dt = menu_edit_schedule_item_handle_button(sched_row, button_pin);
-		int start_time = schedule[sched_row].start_time_m + dt * 5;
+		short dt = menu_edit_schedule_item_handle_button(sched_item, button_pin);
+		int start_time = sched_item.start_time_m + dt * 5;
 		if (start_time > 24 * 60) start_time -= 24 * 60;
 		if (start_time < 0) start_time += 24 * 60;
-		schedule[sched_row].start_time_m = start_time;
+		sched_item.start_time_m = start_time;
 
-		menu_edit_schedule_item_show(sched_row, row_index);
+		menu_edit_schedule_item_show(sched_item, row_index);
 		do {
 			delay(IFACE_MS);
 			button_pin = poll_buttons();
@@ -256,21 +258,21 @@ void menu_edit_schedule_item(byte sched_row) {
 	button_pin = wait_button_release();
 	row_index = 1;
 	while (button_pin != PIN_BUTTON_MENU_OK) {
-		short dt = menu_edit_schedule_item_handle_button(sched_row, button_pin);
-		int end_time = schedule[sched_row].end_time_m + dt * 5;
-			if (end_time < schedule[sched_row].start_time_m) 
-				end_time = schedule[sched_row].start_time_m;
-			schedule[sched_row].end_time_m = end_time;
+		short dt = menu_edit_schedule_item_handle_button(sched_item, button_pin);
+		int end_time = sched_item.end_time_m + dt * 5;
+			if (end_time < sched_item.start_time_m) 
+				end_time = sched_item.start_time_m;
+			sched_item.end_time_m = end_time;
 
-		menu_edit_schedule_item_show(sched_row, row_index);
+		menu_edit_schedule_item_show(sched_item, row_index);
 		do {
 			delay(IFACE_MS);
 			button_pin = poll_buttons();
 		} while (button_pin == 0);
 	}
-	if (schedule[sched_row].start_time_m == schedule[sched_row].end_time_m) {
+	if (sched_item.start_time_m == sched_item.end_time_m) {
 		set_schedule_item(
-			schedule[sched_row], 
+			sched_item, 
 			0, 
 			0,
 			MODE_POOL, SPEED_OFF);
@@ -278,20 +280,30 @@ void menu_edit_schedule_item(byte sched_row) {
 	save_schedule();
 }
 
+void menu_quick_schedule() {
+	// TODO: refactor menu_edit_schedule_item to work on pointer instead of index
+	// TODO: then add a flag to save or not, so that an ephemeral item can be inserted one-off
+}
+
 void menu_root_show(byte row_index) {
 	lcd.clear();
 
-	lcd.setCursor(1, 0);
-	lcd.print("Return");
+	if (row_index < 4) {
+		lcd.setCursor(1, 0);
+		lcd.print("Return");
 
-	lcd.setCursor(1, 1);
-	lcd.print("Set Time");
+		lcd.setCursor(1, 1);
+		lcd.print("Quick Schedule");
 
-	lcd.setCursor(1, 2);
-	lcd.print("Edit Schedule");
+		lcd.setCursor(1, 2);
+		lcd.print("Set Time");
 
-	lcd.setCursor(1, 3);
-	lcd.print("Reset to Defaults");
+		lcd.setCursor(1, 3);
+		lcd.print("Edit Schedule");
+	} else {
+		lcd.setCursor(1, 0);
+		lcd.print("Reset to Defaults");
+	}
 
 	lcd.setCursor(0, row_index % 4);
 	lcd.print(">");
@@ -324,12 +336,15 @@ void menu_root() {
 		// return menu option
 		return;
 	if (row_index == 1) {
-		menu_set_time();
+		menu_quick_schedule();
 	}
 	if (row_index == 2) {
-		menu_edit_schedule();
+		menu_set_time();
 	}
 	if (row_index == 3) {
+		menu_edit_schedule();
+	}
+	if (row_index == 4) {
 		reset_to_defaults();
 	}
 	
